@@ -20,15 +20,40 @@ fn draw_line(easy: &mut EasyCurses, pos1: (i32, i32), pos2: (i32, i32)) {
         }
 
         easy.move_xy(x, y);
-        easy.print_char('A');
+        easy.print_char('#');
     }
 }
 
 fn main() {
     let mut easy = EasyCurses::initialize_system().unwrap();
     easy.set_echo(false);
-    
-    draw_line(&mut easy, (0, 0), (7, 7));
+
+    let (h,w) = easy.get_row_col_count();
+    let (cx,cy): (i32, i32) = (w/2,h/2);
+
+    let verts = [(-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),(-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)];
+    let edges = [(0,1),(1,2),(2,3),(3,0),(4,5),(5,6),(6,7),(7,4),(0,4),(1,5),(2,6),(3,7)];
+
+    for (x,y,z) in &verts {
+        let z = z + 5;
+        let f = (w/2)/z;
+        let x = x * f;
+        let y = y * f;
+        easy.move_xy(cx+x, cy+y);
+        easy.print_char('%');
+    }
+
+    for edge in &edges {
+        let mut points: Vec<(i32,i32)> = Vec::new();
+        for (x,y,z) in &[verts[edge.0],verts[edge.1]] {
+            let z = z + 5;
+            let f = (w/2)/z;
+            let x = x * f;
+            let y = y * f;
+            points.push((cx+x, cy+y));
+        }
+        draw_line(&mut easy, points[0], points[1]);
+    }
 
     //loop {
         easy.refresh();
