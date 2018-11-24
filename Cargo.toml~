@@ -1,7 +1,0 @@
-[package]
-name = "term3d"
-version = "0.1.0"
-authors = ["Luke Wilson <asmoaesl@gmail.com>"]
-edition = "2018"
-
-[dependencies]
