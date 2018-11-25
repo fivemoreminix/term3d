@@ -1,6 +1,5 @@
 extern crate easycurses;
 
-use easycurses::Color::*;
 use easycurses::*;
 
 use std::thread::sleep;
@@ -19,16 +18,16 @@ fn draw_line_low(e: &mut EasyCurses, x0:i32,y0:i32,x1:i32,y1:i32) {
         yi = -1;
         dy = -dy;
     }
-    let mut D = 2*dy - dx;
+    let mut d = 2*dy - dx;
     let mut y = y0;
 
     for x in x0..x1 {
         draw_cell(e, '#', x, y);
-        if D > 0 {
+        if d > 0 {
             y += yi;
-            D -= 2*dx;
+            d -= 2*dx;
         }
-        D += 2*dy;
+        d += 2*dy;
     }
 }
 
@@ -40,16 +39,16 @@ fn draw_line_high(e: &mut EasyCurses, x0:i32,y0:i32,x1:i32,y1:i32) {
         xi = -1;
         dx = -dx;
     }
-    let mut D = 2*dx - dy;
+    let mut d = 2*dx - dy;
     let mut x = x0;
 
     for y in y0..y1 {
         draw_cell(e, '#', x, y);
-        if D > 0 {
+        if d > 0 {
             x += xi;
-            D -= 2*dy;
+            d -= 2*dy;
         }
-        D += 2*dx;
+        d += 2*dx;
     }
 }
 
@@ -79,7 +78,7 @@ impl Camera {
         Camera { pos, rot }
     }
 
-    pub fn update(&mut self, e: &mut EasyCurses, delta: f32, key: Option<Input>) {
+    pub fn update(&mut self, _: &mut EasyCurses, delta: f32, key: Option<Input>) {
         let s = delta * 10.;
 
         if let Some(input) = key {
