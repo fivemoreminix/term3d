@@ -70,18 +70,31 @@ fn draw_line(e: &mut EasyCurses, x0:i32,y0:i32,x1:i32,y1:i32) {
 }
 
 struct Camera {
-    pub pos: (i32,i32,i32),
-    pub rot: (i32,i32),
+    pub pos: (f32,f32,f32),
+    pub rot: (f32,f32),
 }
 
 impl Camera {
-    pub fn new(pos:(i32,i32,i32),rot:(i32,i32)) -> Camera {
+    pub fn new(pos:(f32,f32,f32),rot:(f32,f32)) -> Camera {
         Camera { pos, rot }
     }
 
-    pub fn update(&mut self, e: &mut EasyCurses, delta: u32) {
-        let s = delta * 10;
+    pub fn update(&mut self, e: &mut EasyCurses, delta: f32, key: Option<Input>) {
+        let s = delta * 10.;
 
+        if let Some(input) = key {
+            match input {
+                Input::Character('q') => self.pos.1 += s,
+                Input::Character('e') => self.pos.1 -= s,
+
+                Input::Character('w') | Input::KeyUp => self.pos.2 += s,
+                Input::Character('a') | Input::KeyLeft => self.pos.0 -= s,
+                Input::Character('s') | Input::KeyDown => self.pos.2 -= s,
+                Input::Character('d') | Input::KeyRight => self.pos.0 += s,
+                _ => {}
+            }
+            println!("Input: {:?}", input);
+        }
     }
 }
 
@@ -89,59 +102,61 @@ fn main() {
     let mut easy = EasyCurses::initialize_system().unwrap();
     easy.set_input_mode(InputMode::Character);
     easy.set_input_timeout(TimeoutMode::Immediate);
+    easy.set_cursor_visibility(CursorVisibility::Invisible);
+    easy.set_keypad_enabled(true);
     easy.set_echo(false);
 
     let frame_target_duration = Duration::new(1, 0).checked_div(60).unwrap();
 
-    let verts = [(-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),(-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)];
-    let edges = [(0,1),(1,2),(2,3),(3,0),(4,5),(5,6),(6,7),(7,4),(0,4),(1,5),(2,6),(3,7)];
+    let verts = [(-1.,-1.,-1.),(1.,-1.,-1.),(1.,1.,-1.),(-1.,1.,-1.),(-1.,-1.,1.),(1.,-1.,1.),(1.,1.,1.),(-1.,1.,1.)];
+    let edges = [(0.,1.),(1.,2.),(2.,3.),(3.,0.),(4.,5.),(5.,6.),(6.,7.),(7.,4.),(0.,4.),(1.,5.),(2.,6.),(3.,7.)];
 
     let (mut h, mut w) = easy.get_row_col_count();
-    let (mut cx, mut cy) = (w/2, h/2);
+    let (mut cx, mut cy) = (w as f32 / 2., h as f32 / 2.);
 
-    let mut delta_time = 0;
+    let mut delta_time: f32 = 0.;
 
-    let mut cam = Camera::new((0,0,0),(0,0));
+    let mut cam = Camera::new((0.,0.,-5.),(0.,0.));
 
-    loop {
+    'gameloop: loop {
         let top_of_loop = Instant::now();
 
-        if let Some(input) = easy.get_input() {
-            match input {
-                Input::KeyResize => {
-                    let (height, width) = easy.get_row_col_count();
-                    w = width;
-                    h = height;
-                    cx = w/2;
-                    cy = h/2;
-                }
-                _ => {}
-            }
-        }
+        let key = easy.get_input();
 
-        cam.update(&mut easy, delta_time);
+        if key == Some(Input::Character('\u{1b}')) {
+            break 'gameloop;
+        } else if key == Some(Input::KeyResize) {
+            let (height, width) = easy.get_row_col_count();
+            w = width;
+            h = height;
+            cx = w as f32 / 2.;
+            cy = h as f32 / 2.;
+        } else {
+            cam.update(&mut easy, delta_time, key);
+        }
 
         let after_updates = Instant::now();
 
-        for (x,y,z) in &verts {
-            let z = z + 5;
-            let f = cx/z;
-            let x = x * f;
-            let y = y * f;
-            easy.move_xy(cx+x, cy+y);
-            easy.print_char('%');
+        // clear screen
+        for x in 0..w {
+            for y in 0..h {
+                draw_cell(&mut easy, ' ', x, y);
+            }
         }
 
         for edge in &edges {
-            let mut points: Vec<(i32,i32)> = Vec::new();
-            for (x,y,z) in &[verts[edge.0],verts[edge.1]] {
-                let z = z + 5;
+            let mut points: Vec<(f32,f32)> = Vec::new();
+            for (x,y,z) in &[verts[edge.0 as usize],verts[edge.1 as usize]] {
+                let mut x = x - cam.pos.0;
+                let mut y = y - cam.pos.1;
+                let z = z - cam.pos.2;
+
                 let f = cx/z;
-                let x = x * f;
-                let y = y * f;
+                x *= f;
+                y *= f;
                 points.push((cx+x, cy+y));
             }
-            draw_line(&mut easy, points[0].0, points[0].1, points[1].0, points[1].1);
+            draw_line(&mut easy, points[0].0 as i32, points[0].1 as i32, points[1].0 as i32, points[1].1 as i32);
         }
 
         let elapsed_this_frame = top_of_loop.elapsed();
@@ -151,7 +166,8 @@ fn main() {
 
         easy.refresh();
 
-        delta_time = after_updates.elapsed().subsec_nanos();
+        let elapsed_after_updates = after_updates.elapsed();
+        delta_time = (elapsed_after_updates.as_secs() as f32) + ((elapsed_after_updates.subsec_nanos() as f32) / 1000000000.0);
     }
 }
 
