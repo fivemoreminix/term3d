@@ -68,6 +68,12 @@ fn draw_line(e: &mut EasyCurses, x0:i32,y0:i32,x1:i32,y1:i32) {
     }
 }
 
+fn rotate_2d(pos: (f32,f32), rad: f32) -> (f32, f32) {
+    let (x, y) = pos;
+    let (s, c) = (rad.sin(), rad.cos());
+    (x*c-y*s,y*c+x*s)
+}
+
 struct Camera {
     pub pos: (f32,f32,f32),
     pub rot: (f32,f32),
@@ -86,10 +92,22 @@ impl Camera {
                 Input::Character('q') => self.pos.1 += s,
                 Input::Character('e') => self.pos.1 -= s,
 
-                Input::Character('w') | Input::KeyUp => self.pos.2 += s,
-                Input::Character('a') | Input::KeyLeft => self.pos.0 -= s,
-                Input::Character('s') | Input::KeyDown => self.pos.2 -= s,
-                Input::Character('d') | Input::KeyRight => self.pos.0 += s,
+                Input::Character('w') | Input::Character('a') | Input::Character('s') | Input::Character('d') => {
+                    let (x, y) = (s*self.rot.1.sin(),s*self.rot.1.cos());
+                    match input {
+                        Input::Character('w') => { self.pos.0 += x; self.pos.2 += y; }
+                        Input::Character('s') => { self.pos.0 -= x; self.pos.2 -= y; }
+                        Input::Character('a') => { self.pos.0 -= y; self.pos.2 += x; }
+                        Input::Character('d') => { self.pos.0 += y; self.pos.2 -= x; }
+                        _ => unreachable!(),
+                    }
+                }
+
+                Input::KeyUp => self.rot.0 += s,
+                Input::KeyDown => self.rot.0 -= s,
+                Input::KeyLeft => self.rot.1 -= s,
+                Input::KeyRight => self.rot.1 += s,
+
                 _ => {}
             }
             println!("Input: {:?}", input);
@@ -117,13 +135,12 @@ fn main() {
 
     let mut cam = Camera::new((0.,0.,-5.),(0.,0.));
 
-    'gameloop: loop {
+    loop {
         let top_of_loop = Instant::now();
 
         let key = easy.get_input();
-
         if key == Some(Input::Character('\u{1b}')) {
-            break 'gameloop;
+            break;
         } else if key == Some(Input::KeyResize) {
             let (height, width) = easy.get_row_col_count();
             w = width;
@@ -149,6 +166,9 @@ fn main() {
                 let mut x = x - cam.pos.0;
                 let mut y = y - cam.pos.1;
                 let z = z - cam.pos.2;
+
+                let (mut x, z) = rotate_2d((x,z),cam.rot.1);
+                let (mut y, z) = rotate_2d((y,z),cam.rot.0);
 
                 let f = cx/z;
                 x *= f;
