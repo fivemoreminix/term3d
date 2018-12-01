@@ -150,19 +150,27 @@ fn main() {
         (1., 1., 1.),
         (-1., 1., 1.),
     ];
-    let edges = [
-        (0., 1.),
-        (1., 2.),
-        (2., 3.),
-        (3., 0.),
-        (4., 5.),
-        (5., 6.),
-        (6., 7.),
-        (7., 4.),
-        (0., 4.),
-        (1., 5.),
-        (2., 6.),
-        (3., 7.),
+    // let edges = [
+    //     (0., 1.),
+    //     (1., 2.),
+    //     (2., 3.),
+    //     (3., 0.),
+    //     (4., 5.),
+    //     (5., 6.),
+    //     (6., 7.),
+    //     (7., 4.),
+    //     (0., 4.),
+    //     (1., 5.),
+    //     (2., 6.),
+    //     (3., 7.),
+    // ];
+    let faces = [
+        (0., 1., 2., 3.),
+        (4., 5., 6., 7.),
+        (0., 1., 5., 4.),
+        (2., 3., 7., 6.),
+        (0., 3., 7., 4.),
+        (1., 2., 6., 5.),
     ];
 
     let (mut h, mut w) = easy.get_row_col_count();
@@ -197,28 +205,68 @@ fn main() {
             }
         }
 
-        for edge in &edges {
-            let mut points: Vec<(f32, f32)> = Vec::new();
-            for (x, y, z) in &[verts[edge.0 as usize], verts[edge.1 as usize]] {
-                let x = x - cam.pos.0;
-                let y = y - cam.pos.1;
-                let z = z - cam.pos.2;
+        // for edge in &edges {
+        //     let mut points: Vec<(f32, f32)> = Vec::new();
+        //     for (x, y, z) in &[verts[edge.0 as usize], verts[edge.1 as usize]] {
+        //         let x = x - cam.pos.0;
+        //         let y = y - cam.pos.1;
+        //         let z = z - cam.pos.2;
 
-                let (mut x, z) = rotate_2d((x, z), cam.rot.1);
-                let (mut y, z) = rotate_2d((y, z), cam.rot.0);
+        //         let (mut x, z) = rotate_2d((x, z), cam.rot.1);
+        //         let (mut y, z) = rotate_2d((y, z), cam.rot.0);
 
-                let f = cx / z;
-                x *= f;
-                y *= f;
-                points.push((cx + x, cy + y));
+        //         let f = cx / z;
+        //         x *= f;
+        //         y *= f;
+        //         points.push((cx + x, cy + y));
+        //     }
+        //     draw_line(
+        //         &mut easy,
+        //         points[0].0 as i32,
+        //         points[0].1 as i32,
+        //         points[1].0 as i32,
+        //         points[1].1 as i32,
+        //     );
+        // }
+
+        let mut vert_list = Vec::new();
+        let mut screen_coords = Vec::new();
+
+        for (x, y, z) in &verts {
+            let (x, y, z) = (x - cam.pos.0, y - cam.pos.1, z - cam.pos.2);
+            let (mut x, z) = rotate_2d((x, z), cam.rot.1);
+            let (mut y, z) = rotate_2d((y, z), cam.rot.0);
+            vert_list.push((x, y, z));
+
+            let f = 200. / z;
+            x *= f;
+            y *= f;
+            screen_coords.push((cx + x, cy + y));
+        }
+
+        let mut face_list = Vec::<(f32, f32)>::new();
+        let mut face_color = Vec::<Color>::new();
+
+        for i in 0..faces.len() {
+            let (a, b, c, d) = faces[i];
+            let mut on_screen = false;
+            for &i in &[a, b, c, d] {
+                if vert_list[i as usize].2 > 0. {
+                    on_screen = true;
+                    break;
+                }
             }
-            draw_line(
-                &mut easy,
-                points[0].0 as i32,
-                points[0].1 as i32,
-                points[1].0 as i32,
-                points[1].1 as i32,
-            );
+
+            if on_screen {
+                for i in [a, b, c, d].iter().map(|&v| screen_coords[v as usize]) {
+                    face_list.push(i);
+                }
+                face_color.push(Color::Red);
+            }
+        }
+
+        for i in 0..face_list.len() {
+            draw_polygon(face_color[i], face_list[i]);
         }
 
         let elapsed_this_frame = top_of_loop.elapsed();
