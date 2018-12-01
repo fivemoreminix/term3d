@@ -1,5 +1,5 @@
-extern crate easycurses;
 extern crate cgmath;
+extern crate easycurses;
 
 use easycurses::*;
 
@@ -72,7 +72,7 @@ fn draw_line(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
 }
 
 fn draw_bottom_flat_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<i32>) {
-    let invslope1 = (v2.x - v1.x) / (v2.y - v1.y);
+    let invslope1 = (v2.x - v1.x) / (v2.y - v1.y + 1);
     let invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
 
     let mut curx1 = v1.x;
@@ -92,7 +92,7 @@ fn draw_top_flat_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3:
     let mut curx1 = v3.x;
     let mut curx2 = v3.x;
 
-    for scanline_y in v3.y..v1.y {
+    for scanline_y in (v1.y+1..=v3.y).rev() {
         draw_line(e, curx1, scanline_y, curx2, scanline_y);
         curx1 -= invslope1;
         curx2 -= invslope2;
@@ -112,13 +112,16 @@ fn draw_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<
 
     if y2 == y3 {
         draw_bottom_flat_tri(e, v1, v2, v3);
-    } else if v1.y == v2.y {
+        println!("bottom flat tri");
+    } else if y1 == y2 {
         draw_top_flat_tri(e, v1, v2, v3);
+        println!("top flat tri");
     } else {
         // split the triangle into a top-flat and bottom-flat
         let v4 = Vector2::new(v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x), v2.y);
         draw_bottom_flat_tri(e, v1, v2, v4);
         draw_bottom_flat_tri(e, v2, v4, v3);
+        println!("split into two tris");
     }
 }
 
@@ -259,69 +262,53 @@ fn main() {
             }
         }
 
-        // for edge in &edges {
-        //     let mut points: Vec<(f32, f32)> = Vec::new();
-        //     for (x, y, z) in &[verts[edge.0 as usize], verts[edge.1 as usize]] {
-        //         let x = x - cam.pos.0;
-        //         let y = y - cam.pos.1;
-        //         let z = z - cam.pos.2;
+        // let mut vert_list = Vec::new();
+        // let mut screen_coords = Vec::<Vector2<i32>>::new();
 
-        //         let (mut x, z) = rotate_2d((x, z), cam.rot.1);
-        //         let (mut y, z) = rotate_2d((y, z), cam.rot.0);
+        // for (x, y, z) in &verts {
+        //     let (x, y, z) = (x - cam.pos.0, y - cam.pos.1, z - cam.pos.2);
+        //     let (mut x, z) = rotate_2d((x, z), cam.rot.1);
+        //     let (mut y, z) = rotate_2d((y, z), cam.rot.0);
+        //     vert_list.push((x, y, z));
 
-        //         let f = cx / z;
-        //         x *= f;
-        //         y *= f;
-        //         points.push((cx + x, cy + y));
-        //     }
-        //     draw_line(
-        //         &mut easy,
-        //         points[0].0 as i32,
-        //         points[0].1 as i32,
-        //         points[1].0 as i32,
-        //         points[1].1 as i32,
-        //     );
+        //     let f = 200. / z;
+        //     x *= f;
+        //     y *= f;
+        //     screen_coords.push(Vector2::new((cx + x) as i32, (cy + y) as i32));
         // }
 
-        let mut vert_list = Vec::new();
-        let mut screen_coords = Vec::new();
+        // let mut face_list = Vec::<Vec<Vector2<i32>>>::new();
+        // let mut face_color = Vec::<Color>::new();
 
-        for (x, y, z) in &verts {
-            let (x, y, z) = (x - cam.pos.0, y - cam.pos.1, z - cam.pos.2);
-            let (mut x, z) = rotate_2d((x, z), cam.rot.1);
-            let (mut y, z) = rotate_2d((y, z), cam.rot.0);
-            vert_list.push((x, y, z));
+        // for i in 0..faces.len() {
+        //     let (a, b, c, d) = faces[i];
+        //     let mut on_screen = false;
+        //     for &i in &[a, b, c, d] {
+        //         if vert_list[i as usize].2 > 0. {
+        //             on_screen = true;
+        //             break;
+        //         }
+        //     }
 
-            let f = 200. / z;
-            x *= f;
-            y *= f;
-            screen_coords.push((cx + x, cy + y));
-        }
+        //     if on_screen {
+        //         face_list.push([a, b, c, d].iter().map(|&v| screen_coords[v as usize]).collect());
+        //         face_color.push(Color::Red);
+        //     }
+        // }
 
-        let mut face_list = Vec::<(f32, f32)>::new();
-        let mut face_color = Vec::<Color>::new();
+        // for i in 0..face_list.len() {
+        //     draw_tri(&mut easy, face_list[i][0], face_list[i][1], face_list[i][2]);
+        // }
 
-        for i in 0..faces.len() {
-            let (a, b, c, d) = faces[i];
-            let mut on_screen = false;
-            for &i in &[a, b, c, d] {
-                if vert_list[i as usize].2 > 0. {
-                    on_screen = true;
-                    break;
-                }
-            }
-
-            if on_screen {
-                for i in [a, b, c, d].iter().map(|&v| screen_coords[v as usize]) {
-                    face_list.push(i);
-                }
-                face_color.push(Color::Red);
-            }
-        }
-
-        for i in 0..face_list.len() {
-            draw_polygon(face_color[i], face_list[i]);
-        }
+        draw_tri(
+            &mut easy,
+            Vector2::new(2, 15),
+            Vector2::new(12, 13),
+            Vector2::new(7, 5),
+        );
+        draw_line(&mut easy, 2, 15, 12, 13);
+        draw_line(&mut easy, 12, 13, 7, 5);
+        draw_line(&mut easy, 2, 15, 7, 5);
 
         let elapsed_this_frame = top_of_loop.elapsed();
         if let Some(frame_remaining) = frame_target_duration.checked_sub(elapsed_this_frame) {
