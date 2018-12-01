@@ -1,6 +1,9 @@
 extern crate easycurses;
+extern crate cgmath;
 
 use easycurses::*;
+
+use cgmath::*;
 
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -65,6 +68,57 @@ fn draw_line(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
         } else {
             draw_line_high(e, x0, y0, x1, y1);
         }
+    }
+}
+
+fn draw_bottom_flat_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<i32>) {
+    let invslope1 = (v2.x - v1.x) / (v2.y - v1.y);
+    let invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
+
+    let mut curx1 = v1.x;
+    let mut curx2 = v1.x;
+
+    for scanline_y in v1.y..v2.y {
+        draw_line(e, curx1, scanline_y, curx2, scanline_y);
+        curx1 += invslope1;
+        curx2 += invslope2;
+    }
+}
+
+fn draw_top_flat_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<i32>) {
+    let invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
+    let invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
+
+    let mut curx1 = v3.x;
+    let mut curx2 = v3.x;
+
+    for scanline_y in v3.y..v1.y {
+        draw_line(e, curx1, scanline_y, curx2, scanline_y);
+        curx1 -= invslope1;
+        curx2 -= invslope2;
+    }
+}
+
+fn draw_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<i32>) {
+    // sort the three vertices by y-coordinate ascending so v1 is topmost vertice
+    let (mut y1, mut y2, mut y3);
+    {
+        let mut y = [v1.y, v2.y, v3.y];
+        y.sort();
+        y1 = y[0];
+        y2 = y[1];
+        y3 = y[2];
+    }
+
+    if y2 == y3 {
+        draw_bottom_flat_tri(e, v1, v2, v3);
+    } else if v1.y == v2.y {
+        draw_top_flat_tri(e, v1, v2, v3);
+    } else {
+        // split the triangle into a top-flat and bottom-flat
+        let v4 = Vector2::new(v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x), v2.y);
+        draw_bottom_flat_tri(e, v1, v2, v4);
+        draw_bottom_flat_tri(e, v2, v4, v3);
     }
 }
 

@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 easycurses = "0.12"
+cgmath = "0.16.1"
