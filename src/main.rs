@@ -1,9 +1,10 @@
-extern crate cgmath;
 extern crate easycurses;
 
 use easycurses::*;
 
-use cgmath::*;
+mod prelude;
+
+use crate::prelude::*;
 
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -71,7 +72,7 @@ fn draw_line(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
     }
 }
 
-fn draw_bottom_flat_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<i32>) {
+fn draw_bottom_flat_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
     let invslope1 = (v2.x - v1.x) / (v2.y - v1.y + 1);
     let invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
 
@@ -85,21 +86,21 @@ fn draw_bottom_flat_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, 
     }
 }
 
-fn draw_top_flat_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<i32>) {
+fn draw_top_flat_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
     let invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
     let invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
 
     let mut curx1 = v3.x;
     let mut curx2 = v3.x;
 
-    for scanline_y in (v1.y+1..=v3.y).rev() {
+    for scanline_y in (v1.y + 1..=v3.y).rev() {
         draw_line(e, curx1, scanline_y, curx2, scanline_y);
         curx1 -= invslope1;
         curx2 -= invslope2;
     }
 }
 
-fn draw_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<i32>) {
+fn draw_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
     // sort the three vertices by y-coordinate ascending so v1 is topmost vertice
     let (mut y1, mut y2, mut y3);
     {
@@ -112,16 +113,16 @@ fn draw_tri(e: &mut EasyCurses, v1: Vector2<i32>, v2: Vector2<i32>, v3: Vector2<
 
     if y2 == y3 {
         draw_bottom_flat_tri(e, v1, v2, v3);
-        println!("bottom flat tri");
+        //println!("bottom flat tri");
     } else if y1 == y2 {
         draw_top_flat_tri(e, v1, v2, v3);
-        println!("top flat tri");
+        //println!("top flat tri");
     } else {
         // split the triangle into a top-flat and bottom-flat
-        let v4 = Vector2::new(v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x), v2.y);
+        let v4 = IVec2::new(v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x), v2.y);
         draw_bottom_flat_tri(e, v1, v2, v4);
         draw_bottom_flat_tri(e, v2, v4, v3);
-        println!("split into two tris");
+        //println!("split into two tris");
     }
 }
 
@@ -182,7 +183,7 @@ impl Camera {
 
                 _ => {}
             }
-            println!("Input: {:?}", input);
+            // println!("Input: {:?}", input);
         }
     }
 }
@@ -302,9 +303,9 @@ fn main() {
 
         draw_tri(
             &mut easy,
-            Vector2::new(2, 15),
-            Vector2::new(12, 13),
-            Vector2::new(7, 5),
+            IVec2::new(2, 15),
+            IVec2::new(12, 13),
+            IVec2::new(7, 5),
         );
         draw_line(&mut easy, 2, 15, 12, 13);
         draw_line(&mut easy, 12, 13, 7, 5);
