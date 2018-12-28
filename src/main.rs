@@ -72,57 +72,106 @@ fn draw_line(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
     }
 }
 
-fn draw_bottom_flat_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
-    let invslope1 = (v2.x - v1.x) / (v2.y - v1.y + 1);
-    let invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
+// fn draw_bottom_flat_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
+//     let invslope1 = (v2.x - v1.x) / (v2.y - v1.y + 1);
+//     let invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
 
-    let mut curx1 = v1.x;
-    let mut curx2 = v1.x;
+//     let mut curx1 = v1.x;
+//     let mut curx2 = v1.x;
 
-    for scanline_y in v1.y..v2.y {
-        draw_line(e, curx1, scanline_y, curx2, scanline_y);
-        curx1 += invslope1;
-        curx2 += invslope2;
+//     for scanline_y in v1.y..v2.y {
+//         draw_line(e, curx1, scanline_y, curx2, scanline_y);
+//         curx1 += invslope1;
+//         curx2 += invslope2;
+//     }
+// }
+
+// fn draw_top_flat_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
+//     let invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
+//     let invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
+
+//     let mut curx1 = v3.x;
+//     let mut curx2 = v3.x;
+
+//     for scanline_y in (v1.y + 1..=v3.y).rev() {
+//         draw_line(e, curx1, scanline_y, curx2, scanline_y);
+//         curx1 -= invslope1;
+//         curx2 -= invslope2;
+//     }
+// }
+
+// fn draw_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
+//     // sort the three vertices by y-coordinate ascending so v1 is topmost vertice
+//     let (mut y1, mut y2, mut y3);
+//     {
+//         let mut y = [v1.y, v2.y, v3.y];
+//         y.sort();
+//         y1 = y[0];
+//         y2 = y[1];
+//         y3 = y[2];
+//     }
+
+//     if y2 == y3 {
+//         draw_bottom_flat_tri(e, v1, v2, v3);
+//         //println!("bottom flat tri");
+//     } else if y1 == y2 {
+//         draw_top_flat_tri(e, v1, v2, v3);
+//         //println!("top flat tri");
+//     } else {
+//         // split the triangle into a top-flat and bottom-flat
+//         let v4 = IVec2::new(v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x), v2.y);
+//         draw_bottom_flat_tri(e, v1, v2, v4);
+//         draw_bottom_flat_tri(e, v2, v4, v3);
+//         //println!("split into two tris");
+//     }
+// }
+
+/// # Returns
+/// (minimum x, maximum x, minimum y, maximum y)
+fn tri_bounding_box(v1: IVec2, v2: IVec2, v3: IVec2) -> (i32, i32, i32, i32) {
+    let mut min_x = v1.x;
+    let mut max_x = v1.x;
+    let mut min_y = v1.y;
+    let mut max_y = v1.y;
+
+    for vec in &[v2, v3] {
+        if vec.x < min_x {
+            min_x = vec.x;
+        } else if vec.x > max_x {
+            max_x = vec.x;
+        }
+
+        if vec.y < min_y {
+            min_y = vec.y;
+        } else if vec.y > max_y {
+            max_y = vec.y;
+        }
     }
-}
 
-fn draw_top_flat_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
-    let invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
-    let invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
-
-    let mut curx1 = v3.x;
-    let mut curx2 = v3.x;
-
-    for scanline_y in (v1.y + 1..=v3.y).rev() {
-        draw_line(e, curx1, scanline_y, curx2, scanline_y);
-        curx1 -= invslope1;
-        curx2 -= invslope2;
-    }
+    (min_x, max_x, min_y, max_y)
 }
 
 fn draw_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
-    // sort the three vertices by y-coordinate ascending so v1 is topmost vertice
-    let (mut y1, mut y2, mut y3);
-    {
-        let mut y = [v1.y, v2.y, v3.y];
-        y.sort();
-        y1 = y[0];
-        y2 = y[1];
-        y3 = y[2];
-    }
+    // calculate triangle bounding box
+    let (minx, maxx, miny, maxy) = tri_bounding_box(v1, v2, v3);
+    // (TODO: clip box against render target bounds)
 
-    if y2 == y3 {
-        draw_bottom_flat_tri(e, v1, v2, v3);
-        //println!("bottom flat tri");
-    } else if y1 == y2 {
-        draw_top_flat_tri(e, v1, v2, v3);
-        //println!("top flat tri");
-    } else {
-        // split the triangle into a top-flat and bottom-flat
-        let v4 = IVec2::new(v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x), v2.y);
-        draw_bottom_flat_tri(e, v1, v2, v4);
-        draw_bottom_flat_tri(e, v2, v4, v3);
-        //println!("split into two tris");
+    for i in minx..maxx {
+        for j in miny..maxy {
+            // P = P(i, j);
+            let p = IVec2::new(i, j);
+            
+            // c1 = PDP(AC, AP)
+            let c1 = IVec2::new(v3.x - v1.x, v3.y - v1.y).perp_dot_product(&IVec2::new(p.x - v1.x, p.y - v1.y));
+            // c2 = PDP(BC, BP)
+            let c2 = IVec2::new(v3.x - v2.x, v3.y - v2.y).perp_dot_product(&IVec2::new(p.x - v2.x, p.y - v2.y));
+            // c3 = PDP(CB, CP)
+            let c3 = IVec2::new(v2.x - v3.x, v2.y - v3.y).perp_dot_product(&IVec2::new(p.x - v3.x, p.y - v3.y));
+            
+            if (c1 > 0. && c2 > 0. && c3 > 0.) || (c1 < 0. && c2 < 0. && c3 < 0.) {
+                draw_cell(e, '#', i, j);
+            }
+        }
     }
 }
 
