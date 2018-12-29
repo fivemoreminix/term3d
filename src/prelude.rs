@@ -14,7 +14,6 @@ pub struct Vec2 {
 }
 
 impl Vec2 {
-    #[inline(always)]
     pub fn new(x: f32, y: f32) -> Vec2 {
         Vec2 { x, y }
     }
@@ -27,7 +26,6 @@ pub struct IVec2 {
 }
 
 impl IVec2 {
-    #[inline(always)]
     pub fn new(x: i32, y: i32) -> IVec2 {
         IVec2 { x, y }
     }
@@ -35,7 +33,11 @@ impl IVec2 {
 
 impl Vector for IVec2 {
     fn perp(&self) -> Self {
-        IVec2 { x:-self.x, y:self.y }
+        IVec2 {
+            x: self.y,
+            y: -self.x,
+        }
+        //IVec2 { x:-self.x, y:self.y }
     }
 
     fn dot_product(&self, other: &Self) -> f32 {

@@ -156,20 +156,18 @@ fn draw_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
     let (minx, maxx, miny, maxy) = tri_bounding_box(v1, v2, v3);
     // (TODO: clip box against render target bounds)
 
-    for i in minx..maxx {
-        for j in miny..maxy {
-            // P = P(i, j);
-            let p = IVec2::new(i, j);
-            
-            // c1 = PDP(AC, AP)
-            let c1 = IVec2::new(v3.x - v1.x, v3.y - v1.y).perp_dot_product(&IVec2::new(p.x - v1.x, p.y - v1.y));
-            // c2 = PDP(BC, BP)
-            let c2 = IVec2::new(v3.x - v2.x, v3.y - v2.y).perp_dot_product(&IVec2::new(p.x - v2.x, p.y - v2.y));
-            // c3 = PDP(CB, CP)
-            let c3 = IVec2::new(v2.x - v3.x, v2.y - v3.y).perp_dot_product(&IVec2::new(p.x - v3.x, p.y - v3.y));
-            
-            if (c1 > 0. && c2 > 0. && c3 > 0.) || (c1 < 0. && c2 < 0. && c3 < 0.) {
-                draw_cell(e, '#', i, j);
+    let vs1 = IVec2::new(v2.x - v1.x, v2.y - v1.y);
+    let vs2 = IVec2::new(v3.x - v1.x, v3.y - v1.y);
+
+    for x in minx..=maxx {
+        for y in miny..=maxy {
+            let q = IVec2::new(x - v1.x, y - v1.y);
+
+            let s = q.perp_dot_product(&vs2) / vs1.perp_dot_product(&vs2);
+            let t = vs1.perp_dot_product(&q) / vs1.perp_dot_product(&vs2);
+
+            if (s >= 0.) && (t >= 0.) && (s + t <= 1.) {
+                draw_cell(e, '#', x, y);
             }
         }
     }
