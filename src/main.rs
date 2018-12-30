@@ -14,7 +14,8 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 fn draw_cell(e: &mut EasyCurses, c: char, x: i32, y: i32) {
-    e.move_xy(x, y);
+    // e.move_xy(x, y);
+    e.move_rc(y, x);
     e.print_char(c);
 }
 
@@ -317,6 +318,7 @@ fn main() {
         if key == Some(Input::Character('\u{1b}')) {
             break;
         } else if key == Some(Input::KeyResize) {
+            easy.resize(0, 0);
             let (height, width) = easy.get_row_col_count();
             w = width;
             h = height;
