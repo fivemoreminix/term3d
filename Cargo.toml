@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 easycurses = "0.12"
+ordered-float = "1.0.1"

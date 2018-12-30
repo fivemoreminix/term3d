@@ -1,11 +1,15 @@
 extern crate easycurses;
+extern crate ordered_float;
 
 use easycurses::*;
+
+use ordered_float::NotNan;
 
 mod prelude;
 
 use crate::prelude::*;
 
+use std::cmp::{max, min};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -25,6 +29,7 @@ fn draw_line_low(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
     let mut d = 2 * dy - dx;
     let mut y = y0;
 
+    e.set_color_pair(ColorPair::default());
     for x in x0..x1 {
         draw_cell(e, '#', x, y);
         if d > 0 {
@@ -46,6 +51,7 @@ fn draw_line_high(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
     let mut d = 2 * dx - dy;
     let mut x = x0;
 
+    e.set_color_pair(ColorPair::default());
     for y in y0..y1 {
         draw_cell(e, '#', x, y);
         if d > 0 {
@@ -151,14 +157,24 @@ fn tri_bounding_box(v1: IVec2, v2: IVec2, v3: IVec2) -> (i32, i32, i32, i32) {
     (min_x, max_x, min_y, max_y)
 }
 
-fn draw_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
+fn draw_tri(e: &mut EasyCurses, color: ColorPair, v1: IVec2, v2: IVec2, v3: IVec2) {
     // calculate triangle bounding box
-    let (minx, maxx, miny, maxy) = tri_bounding_box(v1, v2, v3);
-    // (TODO: clip box against render target bounds)
+    let (minx, maxx, miny, maxy) = {
+        let (minx, maxx, miny, maxy) = tri_bounding_box(v1, v2, v3);
+        // Clip box against render target bounds
+        let (emax_y, emax_x) = e.get_row_col_count();
+        (
+            min(emax_x, max(0, minx)),
+            min(emax_x, max(0, maxx)),
+            min(emax_y, max(0, miny)),
+            min(emax_y, max(0, maxy)),
+        )
+    };
 
     let vs1 = IVec2::new(v2.x - v1.x, v2.y - v1.y);
     let vs2 = IVec2::new(v3.x - v1.x, v3.y - v1.y);
 
+    e.set_color_pair(color);
     for x in minx..=maxx {
         for y in miny..=maxy {
             let q = IVec2::new(x - v1.x, y - v1.y);
@@ -235,6 +251,15 @@ impl Camera {
     }
 }
 
+const COLORS: &[Color] = &[
+    Color::Red,
+    Color::Green,
+    Color::Blue,
+    Color::Yellow,
+    Color::White,
+    Color::Magenta,
+];
+
 fn main() {
     let mut easy = EasyCurses::initialize_system().unwrap();
     easy.set_input_mode(InputMode::Character);
@@ -304,59 +329,78 @@ fn main() {
         let after_updates = Instant::now();
 
         // clear screen
+        easy.set_color_pair(ColorPair::default());
         for x in 0..w {
             for y in 0..h {
                 draw_cell(&mut easy, ' ', x, y);
             }
         }
 
-        // let mut vert_list = Vec::new();
-        // let mut screen_coords = Vec::<Vector2<i32>>::new();
+        let mut vert_list = Vec::new();
+        let mut screen_coords = Vec::<IVec2>::new();
 
-        // for (x, y, z) in &verts {
-        //     let (x, y, z) = (x - cam.pos.0, y - cam.pos.1, z - cam.pos.2);
-        //     let (mut x, z) = rotate_2d((x, z), cam.rot.1);
-        //     let (mut y, z) = rotate_2d((y, z), cam.rot.0);
-        //     vert_list.push((x, y, z));
+        for (x, y, z) in &verts {
+            let (x, y, z) = (x - cam.pos.0, y - cam.pos.1, z - cam.pos.2);
+            let (mut x, z) = rotate_2d((x, z), cam.rot.1);
+            let (mut y, z) = rotate_2d((y, z), cam.rot.0);
+            vert_list.push((x, y, z));
 
-        //     let f = 200. / z;
-        //     x *= f;
-        //     y *= f;
-        //     screen_coords.push(Vector2::new((cx + x) as i32, (cy + y) as i32));
-        // }
+            let f = 200. / z;
+            x *= f;
+            y *= f;
+            screen_coords.push(IVec2::new((cx + x) as i32, (cy + y) as i32));
+        }
 
-        // let mut face_list = Vec::<Vec<Vector2<i32>>>::new();
-        // let mut face_color = Vec::<Color>::new();
+        let mut face_list = Vec::<Vec<IVec2>>::new();
+        let mut face_color = Vec::<Color>::new();
+        let mut depth = Vec::<f32>::new();
 
-        // for i in 0..faces.len() {
-        //     let (a, b, c, d) = faces[i];
-        //     let mut on_screen = false;
-        //     for &i in &[a, b, c, d] {
-        //         if vert_list[i as usize].2 > 0. {
-        //             on_screen = true;
-        //             break;
-        //         }
-        //     }
+        for i in 0..faces.len() {
+            let (a, b, c, d) = faces[i];
+            let mut on_screen = false;
+            for &i in &[a, b, c, d] {
+                if vert_list[i as usize].2 > 0. {
+                    on_screen = true;
+                    break;
+                }
+            }
 
-        //     if on_screen {
-        //         face_list.push([a, b, c, d].iter().map(|&v| screen_coords[v as usize]).collect());
-        //         face_color.push(Color::Red);
-        //     }
-        // }
+            if on_screen {
+                face_list.push(
+                    [a, b, c, d]
+                        .iter()
+                        .map(|&v| screen_coords[v as usize])
+                        .collect(),
+                );
+                face_color.push(COLORS[i]);
 
-        // for i in 0..face_list.len() {
-        //     draw_tri(&mut easy, face_list[i][0], face_list[i][1], face_list[i][2]);
-        // }
+                depth.push(
+                    vert_list.iter().map(|v| v.0).sum::<f32>().powf(2.)
+                        + vert_list.iter().map(|v| v.1).sum::<f32>().powf(2.)
+                        + vert_list.iter().map(|v| v.2).sum::<f32>().powf(2.),
+                );
+            }
+        }
 
-        draw_tri(
-            &mut easy,
-            IVec2::new(2, 15),
-            IVec2::new(12, 13),
-            IVec2::new(7, 5),
-        );
-        draw_line(&mut easy, 2, 15, 12, 13);
-        draw_line(&mut easy, 12, 13, 7, 5);
-        draw_line(&mut easy, 2, 15, 7, 5);
+        let mut order = (0..face_list.len()).collect::<Vec<usize>>();
+        order.sort_by_key(|&k| NotNan::new(depth[k]).unwrap());
+
+        for i in order {
+            draw_tri(
+                &mut easy,
+                ColorPair::new(face_color[i], Color::Black),
+                face_list[i][0],
+                face_list[i][1],
+                face_list[i][2],
+            );
+            draw_tri(
+                &mut easy,
+                ColorPair::new(face_color[i], Color::Black),
+                face_list[i][0],
+                face_list[i][3],
+                face_list[i][2],
+            );
+        }
 
         let elapsed_this_frame = top_of_loop.elapsed();
         if let Some(frame_remaining) = frame_target_duration.checked_sub(elapsed_this_frame) {
