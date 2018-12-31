@@ -64,74 +64,30 @@ fn draw_line_high(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
 }
 
 fn draw_line(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
-    if (y1 - y0).abs() < (x1 - x0).abs() {
-        if x0 > x1 {
-            draw_line_low(e, x1, y1, x0, y0);
-        } else {
-            draw_line_low(e, x0, y0, x1, y1);
+    if x0 == x1 {
+        for y in y0..=y1 {
+            draw_cell(e, '|', x0, y);
+        }
+    } else if y0 == y1 {
+        for x in x0..=x1 {
+            draw_cell(e, '-', x, y0);
         }
     } else {
-        if y0 > y1 {
-            draw_line_high(e, x1, y1, x0, y0);
+        if (y1 - y0).abs() < (x1 - x0).abs() {
+            if x0 > x1 {
+                draw_line_low(e, x1, y1, x0, y0);
+            } else {
+                draw_line_low(e, x0, y0, x1, y1);
+            }
         } else {
-            draw_line_high(e, x0, y0, x1, y1);
+            if y0 > y1 {
+                draw_line_high(e, x1, y1, x0, y0);
+            } else {
+                draw_line_high(e, x0, y0, x1, y1);
+            }
         }
     }
 }
-
-// fn draw_bottom_flat_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
-//     let invslope1 = (v2.x - v1.x) / (v2.y - v1.y + 1);
-//     let invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
-
-//     let mut curx1 = v1.x;
-//     let mut curx2 = v1.x;
-
-//     for scanline_y in v1.y..v2.y {
-//         draw_line(e, curx1, scanline_y, curx2, scanline_y);
-//         curx1 += invslope1;
-//         curx2 += invslope2;
-//     }
-// }
-
-// fn draw_top_flat_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
-//     let invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
-//     let invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
-
-//     let mut curx1 = v3.x;
-//     let mut curx2 = v3.x;
-
-//     for scanline_y in (v1.y + 1..=v3.y).rev() {
-//         draw_line(e, curx1, scanline_y, curx2, scanline_y);
-//         curx1 -= invslope1;
-//         curx2 -= invslope2;
-//     }
-// }
-
-// fn draw_tri(e: &mut EasyCurses, v1: IVec2, v2: IVec2, v3: IVec2) {
-//     // sort the three vertices by y-coordinate ascending so v1 is topmost vertice
-//     let (mut y1, mut y2, mut y3);
-//     {
-//         let mut y = [v1.y, v2.y, v3.y];
-//         y.sort();
-//         y1 = y[0];
-//         y2 = y[1];
-//         y3 = y[2];
-//     }
-
-//     if y2 == y3 {
-//         draw_bottom_flat_tri(e, v1, v2, v3);
-//         //println!("bottom flat tri");
-//     } else if y1 == y2 {
-//         draw_top_flat_tri(e, v1, v2, v3);
-//         //println!("top flat tri");
-//     } else {
-//         // split the triangle into a top-flat and bottom-flat
-//         let v4 = IVec2::new(v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x), v2.y);
-//         draw_bottom_flat_tri(e, v1, v2, v4);
-//         draw_bottom_flat_tri(e, v2, v4, v3);
-//         //println!("split into two tris");
-//     }
-// }
 
 /// # Returns
 /// (minimum x, maximum x, minimum y, maximum y)
@@ -240,8 +196,8 @@ impl Camera {
                     }
                 }
 
-                Input::KeyUp => self.rot.0 += s,
-                Input::KeyDown => self.rot.0 -= s,
+                Input::KeyUp => self.rot.0 -= s,
+                Input::KeyDown => self.rot.0 += s,
                 Input::KeyLeft => self.rot.1 -= s,
                 Input::KeyRight => self.rot.1 += s,
 
@@ -338,7 +294,7 @@ fn main() {
             }
         }
 
-        let mut vert_list = Vec::new();
+        let mut vert_list = Vec::<(f32, f32, f32)>::new();
         let mut screen_coords = Vec::<IVec2>::new();
 
         for (x, y, z) in &verts {
@@ -358,6 +314,7 @@ fn main() {
         let mut depth = Vec::<f32>::new();
 
         for i in 0..faces.len() {
+            let face = faces[i];
             let (a, b, c, d) = faces[i];
             let mut on_screen = false;
             for &i in &[a, b, c, d] {
@@ -376,16 +333,33 @@ fn main() {
                 );
                 face_color.push(COLORS[i]);
 
-                depth.push(
-                    vert_list.iter().map(|v| v.0).sum::<f32>().powf(2.)
-                        + vert_list.iter().map(|v| v.1).sum::<f32>().powf(2.)
-                        + vert_list.iter().map(|v| v.2).sum::<f32>().powf(2.),
-                );
+                // depth += [sum(sum(vert_list[j][k] for j in face)**2 for k in range(3))]
+                let mut sum = 0f32;
+                for k in 0..3usize {
+                    let mut vert_sum = 0f32;
+                    for &j in &[face.0, face.1, face.2, face.3] {
+                        vert_sum += match k {
+                            0 => vert_list[j as usize].0,
+                            1 => vert_list[j as usize].1,
+                            2 => vert_list[j as usize].2,
+                            _ => panic!("Should not be possible!"),
+                        };
+                    }
+                    sum += vert_sum.powi(2);
+                }
+                depth.push(sum);
+
+                // depth.push(
+                //     vert_list.iter().map(|v| v.0).sum::<f32>().powf(2.)
+                //         + vert_list.iter().map(|v| v.1).sum::<f32>().powf(2.)
+                //         + vert_list.iter().map(|v| v.2).sum::<f32>().powf(2.),
+                // );
             }
         }
 
         let mut order = (0..face_list.len()).collect::<Vec<usize>>();
         order.sort_by_key(|&k| NotNan::new(depth[k]).unwrap());
+        order.reverse();
 
         for i in order {
             draw_tri(
