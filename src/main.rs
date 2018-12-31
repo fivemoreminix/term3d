@@ -315,10 +315,11 @@ fn main() {
 
         for i in 0..faces.len() {
             let face = faces[i];
-            let (a, b, c, d) = faces[i];
+
             let mut on_screen = false;
-            for &i in &[a, b, c, d] {
-                if vert_list[i as usize].2 > 0. {
+            for &i in &[face.0, face.1, face.2, face.3] {
+                let p = screen_coords[i as usize];
+                if vert_list[i as usize].2 > 0. && p.x > 0 && p.x < w && p.y > 0 && p.y < h {
                     on_screen = true;
                     break;
                 }
@@ -326,7 +327,7 @@ fn main() {
 
             if on_screen {
                 face_list.push(
-                    [a, b, c, d]
+                    [face.0, face.1, face.2, face.3]
                         .iter()
                         .map(|&v| screen_coords[v as usize])
                         .collect(),

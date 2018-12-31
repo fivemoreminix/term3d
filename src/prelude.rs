@@ -29,6 +29,10 @@ impl IVec2 {
     pub fn new(x: i32, y: i32) -> IVec2 {
         IVec2 { x, y }
     }
+
+    pub fn tuple(&self) -> (i32, i32) {
+        (self.x, self.y)
+    }
 }
 
 impl Vector for IVec2 {
