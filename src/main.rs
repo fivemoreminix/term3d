@@ -265,7 +265,7 @@ fn main() {
 
     let mut delta_time: f32 = 0.;
 
-    let mut cam = Camera::new((0., 0., -5.), (0., 0.));
+    let mut cam = Camera::new((6., -2., -10.), (0.15, -0.5));
 
     loop {
         let top_of_loop = Instant::now();
