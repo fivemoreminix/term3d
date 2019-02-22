@@ -17,13 +17,14 @@ pub fn rotate_2d(pos: (f32, f32), rad: f32) -> (f32, f32) {
 }
 
 pub struct Camera {
-    pub pos: (f32, f32, f32),
-    pub rot: (f32, f32),
+    pub transform: Transform,
 }
 
 impl Camera {
-    pub fn new(pos: (f32, f32, f32), rot: (f32, f32)) -> Camera {
-        Camera { pos, rot }
+    pub fn new(pos: (f32, f32, f32), rot: (f32, f32)) -> Self {
+        Self {
+            transform: Transform { pos, rot },
+        }
     }
 
     pub fn update(&mut self, _: &mut EasyCurses, delta: f32, key: Option<Input>) {
@@ -31,43 +32,101 @@ impl Camera {
 
         if let Some(input) = key {
             match input {
-                Input::Character('q') => self.pos.1 += s,
-                Input::Character('e') => self.pos.1 -= s,
+                Input::Character('q') => self.transform.pos.1 += s,
+                Input::Character('e') => self.transform.pos.1 -= s,
 
                 Input::Character('w')
                 | Input::Character('a')
                 | Input::Character('s')
                 | Input::Character('d') => {
-                    let (x, y) = (s * self.rot.1.sin(), s * self.rot.1.cos());
+                    let (x, y) = (s * self.transform.rot.1.sin(), s * self.transform.rot.1.cos());
                     match input {
                         Input::Character('w') => {
-                            self.pos.0 += x;
-                            self.pos.2 += y;
+                            self.transform.pos.0 += x;
+                            self.transform.pos.2 += y;
                         }
                         Input::Character('s') => {
-                            self.pos.0 -= x;
-                            self.pos.2 -= y;
+                            self.transform.pos.0 -= x;
+                            self.transform.pos.2 -= y;
                         }
                         Input::Character('a') => {
-                            self.pos.0 -= y;
-                            self.pos.2 += x;
+                            self.transform.pos.0 -= y;
+                            self.transform.pos.2 += x;
                         }
                         Input::Character('d') => {
-                            self.pos.0 += y;
-                            self.pos.2 -= x;
+                            self.transform.pos.0 += y;
+                            self.transform.pos.2 -= x;
                         }
                         _ => unreachable!(),
                     }
                 }
 
-                Input::KeyUp => self.rot.0 -= s,
-                Input::KeyDown => self.rot.0 += s,
-                Input::KeyLeft => self.rot.1 -= s,
-                Input::KeyRight => self.rot.1 += s,
+                Input::KeyUp => self.transform.rot.0 -= s,
+                Input::KeyDown => self.transform.rot.0 += s,
+                Input::KeyLeft => self.transform.rot.1 -= s,
+                Input::KeyRight => self.transform.rot.1 += s,
 
                 _ => {}
             }
             // println!("Input: {:?}", input);
+        }
+    }
+}
+
+pub struct Mesh {
+    verts: Vec<[f32; 3]>,
+    faces: Vec<[f32; 4]>,
+}
+
+impl Mesh {
+    pub fn cube() -> Self {
+        Self {
+            verts: vec![
+                [-1., -1., -1.],
+                [1., -1., -1.],
+                [1., 1., -1.],
+                [-1., 1., -1.],
+                [-1., -1., 1.],
+                [1., -1., 1.],
+                [1., 1., 1.],
+                [-1., 1., 1.],
+            ],
+            faces: vec![
+                [0., 1., 2., 3.],
+                [4., 5., 6., 7.],
+                [0., 1., 5., 4.],
+                [2., 3., 7., 6.],
+                [0., 3., 7., 4.],
+                [1., 2., 6., 5.],
+            ],
+        }
+    }
+}
+
+pub struct Transform {
+    pub pos: (f32, f32, f32),
+    pub rot: (f32, f32),
+}
+
+impl Transform {
+    pub fn new() -> Self {
+        Self {
+            pos: (0., 0., 0.),
+            rot: (0., 0.),
+        }
+    }
+}
+
+pub struct Object {
+    pub transform: Transform,
+    pub mesh: Mesh,
+}
+
+impl Object {
+    pub fn new(mesh: Mesh) -> Self {
+        Self {
+            transform: Transform::new(),
+            mesh,
         }
     }
 }
@@ -80,54 +139,27 @@ pub trait Game {
 pub struct Term3D {
     pub backend: EasyCurses,
     pub cam: Camera,
+    pub objects: Vec<Object>,
 }
 
 impl Term3D {
     pub fn new() -> Self {
-        Self { backend: EasyCurses::initialize_system().unwrap(), cam: Camera::new((0., 0., 0.), (0., 0.))}
+        Self {
+            backend: EasyCurses::initialize_system().unwrap(),
+            cam: Camera::new((0., 0., 0.), (0., 0.)),
+            objects: Vec::new(),
+        }
     }
 
     pub fn run<T: Game>(&mut self, game: &mut T) {
         self.backend.set_input_mode(InputMode::Character);
         self.backend.set_input_timeout(TimeoutMode::Immediate);
-        self.backend.set_cursor_visibility(CursorVisibility::Invisible);
+        self.backend
+            .set_cursor_visibility(CursorVisibility::Invisible);
         self.backend.set_keypad_enabled(true);
         self.backend.set_echo(false);
 
         let frame_target_duration = Duration::new(1, 0).checked_div(60).unwrap();
-
-        let verts = [
-            (-1., -1., -1.),
-            (1., -1., -1.),
-            (1., 1., -1.),
-            (-1., 1., -1.),
-            (-1., -1., 1.),
-            (1., -1., 1.),
-            (1., 1., 1.),
-            (-1., 1., 1.),
-        ];
-        // let edges = [
-        //     (0., 1.),
-        //     (1., 2.),
-        //     (2., 3.),
-        //     (3., 0.),
-        //     (4., 5.),
-        //     (5., 6.),
-        //     (6., 7.),
-        //     (7., 4.),
-        //     (0., 4.),
-        //     (1., 5.),
-        //     (2., 6.),
-        //     (3., 7.),
-        // ];
-        let faces = [
-            [0., 1., 2., 3.],
-            [4., 5., 6., 7.],
-            [0., 1., 5., 4.],
-            [2., 3., 7., 6.],
-            [0., 3., 7., 4.],
-            [1., 2., 6., 5.],
-        ];
 
         const COLORS: &[Color] = &[
             Color::Red,
@@ -175,51 +207,62 @@ impl Term3D {
                 }
             }
 
-            let mut vert_list = Vec::<[f32; 3]>::new();
-            let mut screen_coords = Vec::<IVec2>::new();
+            let mut face_list = Vec::<Vec<IVec2>>::new(); // All faces that will be rendered onto the screen
+            //let mut face_color = Vec::<Color>::new(); // Colors in the same length and order as face_list
+            let mut depth = Vec::<f32>::new(); // Face's distances from the camera
 
-            for (x, y, z) in &verts {
-                let (x, y, z) = (x - self.cam.pos.0, y - self.cam.pos.1, z - self.cam.pos.2);
-                let (mut x, z) = rotate_2d((x, z), self.cam.rot.1);
-                let (mut y, z) = rotate_2d((y, z), self.cam.rot.0);
-                vert_list.push([x, y, z]);
+            for obj in &self.objects {
+                // Vertices after mutation by camera position and rotation,
+                // and object position offset.
+                let mut vert_list = Vec::<[f32; 3]>::new();
+                // Position of the vertices in vert_list as screen
+                // coordinates.
+                let mut screen_coords = Vec::<IVec2>::new();
 
-                let f = 200. / z;
-                x *= f;
-                y *= f;
-                screen_coords.push(IVec2::new((cx + x) as i32, (cy + y) as i32));
-            }
+                for vert in &obj.mesh.verts {
+                    let (x, y, z) = (
+                        vert[0] - self.cam.transform.pos.0,
+                        vert[1] - self.cam.transform.pos.1,
+                        vert[2] - self.cam.transform.pos.2,
+                    );
+                    let (mut x, z) = rotate_2d((x, z), self.cam.transform.rot.1);
+                    let (mut y, z) = rotate_2d((y, z), self.cam.transform.rot.0);
+                    vert_list.push([x, y, z]);
 
-            let mut face_list = Vec::<Vec<IVec2>>::new();
-            let mut face_color = Vec::<Color>::new();
-            let mut depth = Vec::<f32>::new();
-
-            for i in 0..faces.len() {
-                let face = faces[i];
-
-                let mut on_screen = false;
-                for &i in &face {
-                    let p = screen_coords[i as usize];
-                    if vert_list[i as usize][2] > 0. && p.x > 0 && p.x < w && p.y > 0 && p.y < h {
-                        on_screen = true;
-                        break;
-                    }
+                    let f = 200. / z;
+                    x *= f;
+                    y *= f;
+                    screen_coords.push(IVec2::new((cx + x) as i32, (cy + y) as i32));
                 }
 
-                if on_screen {
-                    face_list.push(
-                        face.iter()
-                            .map(|&v| screen_coords[v as usize])
-                            .collect(),
-                    );
-                    face_color.push(COLORS[i]);
+                for i in 0..obj.mesh.faces.len() {
+                    let face = obj.mesh.faces[i];
 
-                    // depth += [sum(sum(vert_list[j][k] for j in face)**2 for k in range(3))]
-                    depth.push((0..3).map(|k| {
-                        face.iter().map(|&j| {
-                            vert_list[j as usize][k as usize]
-                        }).sum::<f32>().powi(2)
-                    }).sum::<f32>());
+                    let mut on_screen = false;
+                    for &i in &face {
+                        let p = screen_coords[i as usize];
+                        if vert_list[i as usize][2] > 0. && p.x > 0 && p.x < w && p.y > 0 && p.y < h {
+                            on_screen = true;
+                            //break; // COMMENT THIS OUT LATER
+                        }
+                    }
+
+                    if on_screen {
+                        face_list.push(face.iter().map(|&v| screen_coords[v as usize]).collect());
+                        //face_color.push(COLORS[i]);
+
+                        // depth += [sum(sum(vert_list[j][k] for j in face)**2 for k in range(3))]
+                        depth.push(
+                            (0..3)
+                                .map(|k| {
+                                    face.iter()
+                                        .map(|&j| vert_list[j as usize][k as usize])
+                                        .sum::<f32>()
+                                        .powi(2)
+                                })
+                                .sum::<f32>(),
+                        );
+                    }
                 }
             }
 
@@ -230,14 +273,14 @@ impl Term3D {
             for i in order {
                 Self::draw_tri(
                     &mut self.backend,
-                    ColorPair::new(face_color[i], Color::Black),
+                    ColorPair::new(Color::White, Color::Black),
                     face_list[i][0],
                     face_list[i][1],
                     face_list[i][2],
                 );
                 Self::draw_tri(
                     &mut self.backend,
-                    ColorPair::new(face_color[i], Color::Black),
+                    ColorPair::new(Color::White, Color::Black),
                     face_list[i][0],
                     face_list[i][3],
                     face_list[i][2],

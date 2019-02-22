@@ -5,10 +5,12 @@ struct App;
 impl Game for App {
     fn start(&mut self, term: &mut Term3D) {
         // Initialize camera
-        term.cam.pos = (6., -2., -10.);
-        term.cam.rot = (0.15, -0.5);
-        
+        term.cam.transform = Transform { pos: (6., -2., -10.), rot: (0.15, -0.5) };
+
         // Spawn a cube with a position and rotation
+        let cube = Mesh::cube();
+        let obj = Object::new(cube);
+        term.objects.push(obj);
     }
 
     fn update(&mut self, term: &mut Term3D, delta: f32) {
