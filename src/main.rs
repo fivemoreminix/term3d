@@ -1,6 +1,3 @@
-extern crate easycurses;
-extern crate ordered_float;
-
 use easycurses::*;
 
 use ordered_float::NotNan;
@@ -252,12 +249,12 @@ fn main() {
     //     (3., 7.),
     // ];
     let faces = [
-        (0., 1., 2., 3.),
-        (4., 5., 6., 7.),
-        (0., 1., 5., 4.),
-        (2., 3., 7., 6.),
-        (0., 3., 7., 4.),
-        (1., 2., 6., 5.),
+        [0., 1., 2., 3.],
+        [4., 5., 6., 7.],
+        [0., 1., 5., 4.],
+        [2., 3., 7., 6.],
+        [0., 3., 7., 4.],
+        [1., 2., 6., 5.],
     ];
 
     let (mut h, mut w) = easy.get_row_col_count();
@@ -294,14 +291,14 @@ fn main() {
             }
         }
 
-        let mut vert_list = Vec::<(f32, f32, f32)>::new();
+        let mut vert_list = Vec::<[f32; 3]>::new();
         let mut screen_coords = Vec::<IVec2>::new();
 
         for (x, y, z) in &verts {
             let (x, y, z) = (x - cam.pos.0, y - cam.pos.1, z - cam.pos.2);
             let (mut x, z) = rotate_2d((x, z), cam.rot.1);
             let (mut y, z) = rotate_2d((y, z), cam.rot.0);
-            vert_list.push((x, y, z));
+            vert_list.push([x, y, z]);
 
             let f = 200. / z;
             x *= f;
@@ -317,9 +314,9 @@ fn main() {
             let face = faces[i];
 
             let mut on_screen = false;
-            for &i in &[face.0, face.1, face.2, face.3] {
+            for &i in &face {
                 let p = screen_coords[i as usize];
-                if vert_list[i as usize].2 > 0. && p.x > 0 && p.x < w && p.y > 0 && p.y < h {
+                if vert_list[i as usize][2] > 0. && p.x > 0 && p.x < w && p.y > 0 && p.y < h {
                     on_screen = true;
                     break;
                 }
@@ -327,34 +324,18 @@ fn main() {
 
             if on_screen {
                 face_list.push(
-                    [face.0, face.1, face.2, face.3]
-                        .iter()
+                    face.iter()
                         .map(|&v| screen_coords[v as usize])
                         .collect(),
                 );
                 face_color.push(COLORS[i]);
 
                 // depth += [sum(sum(vert_list[j][k] for j in face)**2 for k in range(3))]
-                let mut sum = 0f32;
-                for k in 0..3usize {
-                    let mut vert_sum = 0f32;
-                    for &j in &[face.0, face.1, face.2, face.3] {
-                        vert_sum += match k {
-                            0 => vert_list[j as usize].0,
-                            1 => vert_list[j as usize].1,
-                            2 => vert_list[j as usize].2,
-                            _ => panic!("Should not be possible!"),
-                        };
-                    }
-                    sum += vert_sum.powi(2);
-                }
-                depth.push(sum);
-
-                // depth.push(
-                //     vert_list.iter().map(|v| v.0).sum::<f32>().powf(2.)
-                //         + vert_list.iter().map(|v| v.1).sum::<f32>().powf(2.)
-                //         + vert_list.iter().map(|v| v.2).sum::<f32>().powf(2.),
-                // );
+                depth.push((0..3).map(|k| {
+                    face.iter().map(|&j| {
+                        vert_list[j as usize][k as usize]
+                    }).sum::<f32>().powi(2)
+                }).sum::<f32>());
             }
         }
 
