@@ -1,5 +1,4 @@
-pub use easycurses::Color;
-use easycurses::*;
+pub use easycurses::*;
 
 use ordered_float::NotNan;
 
@@ -25,54 +24,6 @@ impl Camera {
     pub fn new(pos: (f32, f32, f32), rot: (f32, f32)) -> Self {
         Self {
             transform: Transform { pos, rot },
-        }
-    }
-
-    pub fn update(&mut self, _: &mut EasyCurses, delta: f32, key: Option<Input>) {
-        let s = delta * 10.;
-
-        if let Some(input) = key {
-            match input {
-                Input::Character('q') => self.transform.pos.1 += s,
-                Input::Character('e') => self.transform.pos.1 -= s,
-
-                Input::Character('w')
-                | Input::Character('a')
-                | Input::Character('s')
-                | Input::Character('d') => {
-                    let (x, y) = (
-                        s * self.transform.rot.1.sin(),
-                        s * self.transform.rot.1.cos(),
-                    );
-                    match input {
-                        Input::Character('w') => {
-                            self.transform.pos.0 += x;
-                            self.transform.pos.2 += y;
-                        }
-                        Input::Character('s') => {
-                            self.transform.pos.0 -= x;
-                            self.transform.pos.2 -= y;
-                        }
-                        Input::Character('a') => {
-                            self.transform.pos.0 -= y;
-                            self.transform.pos.2 += x;
-                        }
-                        Input::Character('d') => {
-                            self.transform.pos.0 += y;
-                            self.transform.pos.2 -= x;
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-
-                Input::KeyUp => self.transform.rot.0 -= s,
-                Input::KeyDown => self.transform.rot.0 += s,
-                Input::KeyLeft => self.transform.rot.1 -= s,
-                Input::KeyRight => self.transform.rot.1 += s,
-
-                _ => {}
-            }
-            // println!("Input: {:?}", input);
         }
     }
 }
@@ -138,7 +89,7 @@ impl Object {
 
 pub trait Game {
     fn start(&mut self, term: &mut Term3D);
-    fn update(&mut self, term: &mut Term3D, delta: f32);
+    fn update(&mut self, term: &mut Term3D, delta: f32, key: Option<Input>);
 }
 
 pub struct Term3D {
@@ -187,11 +138,9 @@ impl Term3D {
                 h = height;
                 cx = w as f32 / 2.;
                 cy = h as f32 / 2.;
-            } else {
-                self.cam.update(&mut self.backend, delta_time, key);
             }
 
-            game.update(self, delta_time);
+            game.update(self, delta_time, key);
 
             let after_updates = Instant::now();
 
