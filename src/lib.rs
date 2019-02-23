@@ -167,7 +167,7 @@ impl Term3D {
                 for vert in &obj.mesh.verts {
                     let (x, y, z) = (
                         vert[0] - self.cam.transform.pos.0,
-                        vert[1] - self.cam.transform.pos.1,
+                        vert[1] / 2. - self.cam.transform.pos.1,
                         vert[2] - self.cam.transform.pos.2,
                     );
                     let (mut x, z) = rotate_2d((x, z), self.cam.transform.rot.1);
