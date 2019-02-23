@@ -6,3 +6,4 @@ Term3D does the rendering and input for you. It's a rather lightweight game engi
 All code can be found in the 'examples' folder.
 ## Cube
 ![](media/cube.gif)
+![](media/prop_cube.png)
