@@ -1,3 +1,4 @@
+pub use easycurses::Color;
 use easycurses::*;
 
 use ordered_float::NotNan;
@@ -39,7 +40,10 @@ impl Camera {
                 | Input::Character('a')
                 | Input::Character('s')
                 | Input::Character('d') => {
-                    let (x, y) = (s * self.transform.rot.1.sin(), s * self.transform.rot.1.cos());
+                    let (x, y) = (
+                        s * self.transform.rot.1.sin(),
+                        s * self.transform.rot.1.cos(),
+                    );
                     match input {
                         Input::Character('w') => {
                             self.transform.pos.0 += x;
@@ -74,11 +78,12 @@ impl Camera {
 }
 
 pub struct Mesh {
-    verts: Vec<[f32; 3]>,
-    faces: Vec<[f32; 4]>,
+    pub verts: Vec<[f32; 3]>,
+    pub faces: Vec<([f32; 4], Option<Color>)>,
 }
 
 impl Mesh {
+    #[inline]
     pub fn cube() -> Self {
         Self {
             verts: vec![
@@ -92,12 +97,12 @@ impl Mesh {
                 [-1., 1., 1.],
             ],
             faces: vec![
-                [0., 1., 2., 3.],
-                [4., 5., 6., 7.],
-                [0., 1., 5., 4.],
-                [2., 3., 7., 6.],
-                [0., 3., 7., 4.],
-                [1., 2., 6., 5.],
+                ([0., 1., 2., 3.], None),
+                ([4., 5., 6., 7.], None),
+                ([0., 1., 5., 4.], None),
+                ([2., 3., 7., 6.], None),
+                ([0., 3., 7., 4.], None),
+                ([1., 2., 6., 5.], None),
             ],
         }
     }
@@ -161,15 +166,6 @@ impl Term3D {
 
         let frame_target_duration = Duration::new(1, 0).checked_div(60).unwrap();
 
-        const COLORS: &[Color] = &[
-            Color::Red,
-            Color::Green,
-            Color::Blue,
-            Color::Yellow,
-            Color::White,
-            Color::Magenta,
-        ];
-
         let (mut h, mut w) = self.backend.get_row_col_count();
         let (mut cx, mut cy) = (w as f32 / 2., h as f32 / 2.);
 
@@ -207,8 +203,8 @@ impl Term3D {
                 }
             }
 
-            let mut face_list = Vec::<Vec<IVec2>>::new(); // All faces that will be rendered onto the screen
-            //let mut face_color = Vec::<Color>::new(); // Colors in the same length and order as face_list
+            let mut face_list = Vec::<([IVec2; 4], Option<Color>)>::new(); // All faces that will be rendered onto the screen
+                                                                           //let mut face_color = Vec::<Color>::new(); // Colors in the same length and order as face_list
             let mut depth = Vec::<f32>::new(); // Face's distances from the camera
 
             for obj in &self.objects {
@@ -239,23 +235,34 @@ impl Term3D {
                     let face = obj.mesh.faces[i];
 
                     let mut on_screen = false;
-                    for &i in &face {
+                    for &i in &face.0 {
                         let p = screen_coords[i as usize];
-                        if vert_list[i as usize][2] > 0. && p.x > 0 && p.x < w && p.y > 0 && p.y < h {
+                        if vert_list[i as usize][2] > 0. && p.x > 0 && p.x < w && p.y > 0 && p.y < h
+                        {
                             on_screen = true;
                             //break; // COMMENT THIS OUT LATER
                         }
                     }
 
                     if on_screen {
-                        face_list.push(face.iter().map(|&v| screen_coords[v as usize]).collect());
+                        face_list.push((
+                            //face.0.iter().map(|&v| screen_coords[v as usize]).collect(),
+                            [
+                                screen_coords[face.0[0] as usize],
+                                screen_coords[face.0[1] as usize],
+                                screen_coords[face.0[2] as usize],
+                                screen_coords[face.0[3] as usize],
+                            ],
+                            face.1,
+                        ));
                         //face_color.push(COLORS[i]);
 
                         // depth += [sum(sum(vert_list[j][k] for j in face)**2 for k in range(3))]
                         depth.push(
                             (0..3)
                                 .map(|k| {
-                                    face.iter()
+                                    face.0
+                                        .iter()
                                         .map(|&j| vert_list[j as usize][k as usize])
                                         .sum::<f32>()
                                         .powi(2)
@@ -271,19 +278,19 @@ impl Term3D {
             order.reverse();
 
             for i in order {
-                Self::draw_tri(
+                Self::draw_quad(
                     &mut self.backend,
-                    ColorPair::new(Color::White, Color::Black),
-                    face_list[i][0],
-                    face_list[i][1],
-                    face_list[i][2],
-                );
-                Self::draw_tri(
-                    &mut self.backend,
-                    ColorPair::new(Color::White, Color::Black),
-                    face_list[i][0],
-                    face_list[i][3],
-                    face_list[i][2],
+                    ColorPair::new(
+                        match face_list[i].1 {
+                            Some(c) => c,
+                            None => Color::White,
+                        },
+                        Color::Black,
+                    ),
+                    face_list[i].0[0],
+                    face_list[i].0[1],
+                    face_list[i].0[2],
+                    face_list[i].0[3],
                 );
             }
 
@@ -431,5 +438,10 @@ impl Term3D {
                 }
             }
         }
+    }
+
+    pub fn draw_quad(e: &mut EasyCurses, color: ColorPair, a: IVec2, b: IVec2, c: IVec2, d: IVec2) {
+        Self::draw_tri(e, color, a, b, c);
+        Self::draw_tri(e, color, a, d, c);
     }
 }
