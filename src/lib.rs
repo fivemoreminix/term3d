@@ -1,14 +1,17 @@
 pub use easycurses::*;
+pub use nalgebra_glm as glm;
 
 use ordered_float::NotNan;
 
-mod prelude;
-
-use crate::prelude::*;
+use glm::IVec2;
 
 use std::cmp::{max, min};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
+
+pub fn perp_ivec2(vec: &IVec2) -> IVec2 {
+    IVec2::new(vec.y, -vec.x)
+}
 
 pub fn rotate_2d(pos: (f32, f32), rad: f32) -> (f32, f32) {
     let (x, y) = pos;
@@ -379,8 +382,11 @@ impl Term3D {
             for y in miny..=maxy {
                 let q = IVec2::new(x - v1.x, y - v1.y);
 
-                let s = q.perp_dot_product(&vs2) / vs1.perp_dot_product(&vs2);
-                let t = vs1.perp_dot_product(&q) / vs1.perp_dot_product(&vs2);
+                let perp_dot_product_vs1_vs2 = perp_ivec2(&vs1).dot(&vs2) as f32;
+                let s = perp_ivec2(&q).dot(&vs2) as f32 / perp_dot_product_vs1_vs2;
+                let t = perp_ivec2(&vs1).dot(&q) as f32 / perp_dot_product_vs1_vs2;
+                //let s = q.perp_dot_product(&vs2) / vs1.perp_dot_product(&vs2);
+                //let t = vs1.perp_dot_product(&q) / vs1.perp_dot_product(&vs2);
 
                 if (s >= 0.) && (t >= 0.) && (s + t <= 1.) {
                     Self::draw_cell(e, '#', x, y);

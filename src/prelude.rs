@@ -1,9 +1,11 @@
+#![deprecated]
+
 pub trait Vector: Sized {
     fn perp(&self) -> Self;
-    fn dot_product(&self, other: &Self) -> f32;
+    fn dot(&self, other: &Self) -> f32;
 
-    fn perp_dot_product(&self, other: &Self) -> f32 {
-        self.perp().dot_product(other)
+    fn perp_dot(&self, other: &Self) -> f32 {
+        self.perp().dot(other)
     }
 }
 
@@ -44,7 +46,7 @@ impl Vector for IVec2 {
         //IVec2 { x:-self.x, y:self.y }
     }
 
-    fn dot_product(&self, other: &Self) -> f32 {
+    fn dot(&self, other: &Self) -> f32 {
         (self.x * other.x + self.y * other.y) as f32
     }
 }
