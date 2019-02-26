@@ -152,7 +152,9 @@ impl Term3D {
 
             game.update(self, delta_time, key);
 
-            self.log[1].0 = format!("{}", self.log[1].2.as_secs());
+            if self.log.len() >= 2 {
+                self.log[0].0 = format!("{}", self.log[1].2.as_secs());
+            }
 
             //let after_updates = Instant::now();
 
