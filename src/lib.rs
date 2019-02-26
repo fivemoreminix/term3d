@@ -366,7 +366,9 @@ impl Term3D {
         let (minx, maxx, miny, maxy) = {
             let (minx, maxx, miny, maxy) = Self::tri_bounding_box(v1, v2, v3);
             // Clip box against render target bounds
-            let (emax_y, emax_x) = e.get_row_col_count();
+            let (mut emax_y, mut emax_x) = e.get_row_col_count();
+            emax_y -= 1;
+            emax_x -= 1;
             (
                 min(emax_x, max(0, minx)),
                 min(emax_x, max(0, maxx)),
