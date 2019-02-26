@@ -189,10 +189,11 @@ impl Term3D {
                     let mut on_screen = false;
                     for &i in &face.0 {
                         let p = screen_coords[i as usize];
-                        if vert_list[i as usize][2] > 0. && p.x > 0 && p.x < w && p.y > 0 && p.y < h
+                        // If any of the face's corners are within view
+                        if /*vert_list[i as usize][2] > 0. &&*/ (p.x >= 0 && p.x <= w) || (p.y >= 0 && p.y <= h)
                         {
                             on_screen = true;
-                            //break; // COMMENT THIS OUT LATER
+                            break; // Break from the iteration
                         }
                     }
 
