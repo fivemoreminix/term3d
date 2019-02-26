@@ -32,6 +32,12 @@ impl Game for App {
     }
 
     fn update(&mut self, term: &mut Term3D, delta: f32, key: Option<Input>) {
+        // Print framerate at top-middle of screen
+        // term.backend.move_rc(0, term.backend.get_row_col_count().1 / 2);
+        // term.backend.set_color_pair(ColorPair::new(Color::Yellow, Color::Black));
+        // term.backend.print("20");
+        //term.log(&format!("{}", (1./delta) as u32), Color::Yellow);
+
         if let Some(input) = key {
             let s = delta * 10.;
             let cam = &mut term.cam;

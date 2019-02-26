@@ -1,0 +1,38 @@
+   Compiling term3d v0.1.0 (/Users/lukewilson/Documents/Projects/term3d)
+warning: unused import: `Color`
+ --> /Users/lukewilson/Documents/Projects/term3d/src/core.rs:1:30
+  |
+1 | use easycurses::{EasyCurses, Color, ColorPair};
+  |                              ^^^^^
+  |
+  = note: #[warn(unused_imports)] on by default
+
+warning: unused import: `min`
+  --> /Users/lukewilson/Documents/Projects/term3d/src/lib.rs:14:21
+   |
+14 | use std::cmp::{max, min};
+   |                     ^^^
+
+warning: function is never used: `draw_line_low`
+  --> /Users/lukewilson/Documents/Projects/term3d/src/core.rs:23:1
+   |
+23 | fn draw_line_low(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(dead_code)] on by default
+
+warning: function is never used: `draw_line_high`
+  --> /Users/lukewilson/Documents/Projects/term3d/src/core.rs:45:1
+   |
+45 | fn draw_line_high(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function is never used: `draw_line`
+  --> /Users/lukewilson/Documents/Projects/term3d/src/core.rs:67:1
+   |
+67 | pub fn draw_line(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   Compiling cube v0.1.0 (/Users/lukewilson/Documents/Projects/term3d/examples/cube)
+    Finished dev [unoptimized + debuginfo] target(s) in 1.27s
+     Running `target/debug/cube`
