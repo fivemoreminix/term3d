@@ -14,6 +14,15 @@ pub fn rotate_2d(pos: (f32, f32), rad: f32) -> (f32, f32) {
     (x * c - y * s, y * c + x * s)
 }
 
+pub trait Backend {
+    /// Should print a single character with the given color to the x and y position on the terminal,
+    /// in the fastest possible way. This function will be called thousands, to hundreds of thousands
+    /// of times in a single frame.
+    fn draw(&mut self, c: char, color: ColorPair, x: u32, y: u32);
+    /// Return width and height (in character cells) of the terminal window.
+    fn get_dimensions(&self) -> (u32, u32);
+}
+
 pub fn draw_cell(e: &mut EasyCurses, c: char, x: i32, y: i32) {
     // Top left is origin
     e.move_rc(y, x);
