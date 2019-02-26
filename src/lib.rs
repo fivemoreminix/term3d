@@ -271,12 +271,12 @@ impl Term3D {
                     }
                 }
 
-                if !to_be_removed.is_empty() {
+                if !to_be_removed.is_empty() { // TODO: Bug exists somewhere in this block of code
                     let mut offset = 0;
                     for index in to_be_removed {
                         // This only works because the items in to_be_removed are added
                         // in the same order as 0..self.log.len() (they are sorted)
-                        self.log.remove(index - offset);
+                        self.log.remove(max(0, index - offset));
                         offset += 1;
                     }
                 }
