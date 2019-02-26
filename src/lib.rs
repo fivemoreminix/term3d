@@ -1,3 +1,5 @@
+#![feature(vec_remove_item)]
+
 pub use easycurses::*;
 pub use nalgebra_glm as glm;
 
@@ -99,6 +101,7 @@ pub struct Term3D {
     pub backend: EasyCurses,
     pub cam: Camera,
     pub objects: Vec<Object>,
+    pub log: Vec<(String, Color, Duration)>, // Lines of text being drawn
 }
 
 impl Term3D {
@@ -107,6 +110,7 @@ impl Term3D {
             backend: EasyCurses::initialize_system().unwrap(),
             cam: Camera::new((0., 0., 0.), (0., 0.)),
             objects: Vec::new(),
+            log: Vec::new(),
         }
     }
 
@@ -128,6 +132,9 @@ impl Term3D {
         // Initialize game
         game.start(self);
 
+        self.log("Game started!", Color::Green);
+        self.log("", Color::Red);
+
         loop {
             let top_of_loop = Instant::now();
 
@@ -145,7 +152,9 @@ impl Term3D {
 
             game.update(self, delta_time, key);
 
-            let after_updates = Instant::now();
+            self.log[1].0 = format!("{}", self.log[1].2.as_secs());
+
+            //let after_updates = Instant::now();
 
             // clear screen
             self.backend.set_color_pair(ColorPair::default());
@@ -247,23 +256,58 @@ impl Term3D {
                 );
             }
 
+            if !self.log.is_empty() {
+                let mut to_be_removed = Vec::<usize>::new();
+
+                for i in 0..self.log.len() {
+                    // Draw log text
+                    self.backend.move_rc(i as i32, 0);
+                    self.backend.set_color_pair(ColorPair::new(self.log[i].1, Color::Black));
+                    self.backend.print(&self.log[i].0);
+
+                    match self.log[i].2.checked_sub(Duration::from_millis((delta_time * 1000.) as u64)) {
+                        None => to_be_removed.push(i),
+                        Some(v) => self.log[i].2 = v,
+                    }
+                }
+
+                if !to_be_removed.is_empty() {
+                    let mut offset = 0;
+                    for index in to_be_removed {
+                        // This only works because the items in to_be_removed are added
+                        // in the same order as 0..self.log.len() (they are sorted)
+                        self.log.remove(index - offset);
+                        offset += 1;
+                    }
+                }
+            }
+
             let elapsed_this_frame = top_of_loop.elapsed();
+            // Sleep the remainder of the target frame rate time
             if let Some(frame_remaining) = frame_target_duration.checked_sub(elapsed_this_frame) {
                 sleep(frame_remaining);
             }
 
             self.backend.refresh();
 
-            let elapsed_after_updates = after_updates.elapsed();
-            delta_time = (elapsed_after_updates.as_secs() as f32)
-                + ((elapsed_after_updates.subsec_nanos() as f32) / 1000000000.0);
+            //let elapsed_after_updates = after_updates.elapsed();
+            //delta_time = (elapsed_after_updates.as_secs() as f32)
+            //    + ((elapsed_after_updates.subsec_nanos() as f32) / 1000000000.0);
+            delta_time = elapsed_this_frame.subsec_nanos() as f32 / 1000000000.0;
         }
     }
 
     pub fn draw_cell(e: &mut EasyCurses, c: char, x: i32, y: i32) {
-        // e.move_xy(x, y);
+        // Top left is origin
         e.move_rc(y, x);
         e.print_char(c);
+    }
+
+    pub fn log(&mut self, text: &str, color: Color) {
+        self.log.insert(0, (text.to_owned(), color, Duration::from_secs(10)));
+        if self.log.len() > self.backend.get_row_col_count().0 as usize {
+            self.log.pop();
+        }
     }
 
     fn draw_line_low(e: &mut EasyCurses, x0: i32, y0: i32, x1: i32, y1: i32) {
