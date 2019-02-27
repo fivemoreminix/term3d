@@ -195,7 +195,7 @@ impl Term3D {
                     for &i in &face.0 {
                         let p = screen_coords[i as usize];
                         // If any of the face's corners are within view
-                        if /*vert_list[i as usize][2] > 0. &&*/ (p.x >= 0 && p.x <= w) || (p.y >= 0 && p.y <= h)
+                        if vert_list[i as usize][2] > 0. && (p.x >= 0 && p.x <= w) || (p.y >= 0 && p.y <= h)
                         {
                             on_screen = true;
                             break; // Break from the iteration
