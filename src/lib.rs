@@ -5,7 +5,7 @@ pub use nalgebra_glm as glm;
 
 use ordered_float::NotNan;
 
-mod core;
+pub mod core;
 
 use crate::core::*;
 
@@ -126,8 +126,8 @@ impl Term3D {
         // Initialize game
         game.start(self);
 
-        self.log("Game started!", Color::Green);
-        self.log("", Color::Red);
+        //self.log("Game started!", Color::Green);
+        //self.log("", Color::Red);
 
         loop {
             let top_of_loop = Instant::now();
@@ -144,14 +144,6 @@ impl Term3D {
                 cy = h as f32 / 2.;
             }
 
-            game.update(self, delta_time, key);
-
-            if self.log.len() >= 2 {
-                self.log[0].0 = format!("{}", self.log[1].2.as_secs());
-            }
-
-            //let after_updates = Instant::now();
-
             // clear screen
             self.backend.set_color_pair(ColorPair::default());
             for x in 0..w {
@@ -159,6 +151,14 @@ impl Term3D {
                     draw_cell(&mut self.backend, ' ', x, y);
                 }
             }
+
+            game.update(self, delta_time, key);
+
+            // if self.log.len() >= 2 {
+            //     self.log[0].0 = format!("{}", self.log[1].2.as_secs());
+            // }
+
+            //let after_updates = Instant::now();
 
             let mut face_list = Vec::<([IVec2; 4], Option<Color>)>::new(); // All faces that will be rendered onto the screen
                                                                            //let mut face_color = Vec::<Color>::new(); // Colors in the same length and order as face_list
