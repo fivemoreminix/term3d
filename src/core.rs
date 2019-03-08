@@ -1,4 +1,4 @@
-use easycurses::{EasyCurses, ColorPair, InputMode, CursorVisibility, TimeoutMode};
+use easycurses::{EasyCurses, ColorPair};
 
 use crate::glm::IVec2;
 
@@ -12,63 +12,6 @@ pub fn rotate_2d(pos: (f32, f32), rad: f32) -> (f32, f32) {
     let (x, y) = pos;
     let (s, c) = (rad.sin(), rad.cos());
     (x * c - y * s, y * c + x * s)
-}
-
-pub trait Backend {
-    /// Create and initialize the backend.
-    /// 
-    /// A correctly initialized backend should have no visible cursor.
-    fn new() -> Self;
-    /// Print a single character with the given color to the x and y position on the terminal,
-    /// in the fastest possible way. This function will be called thousands, to hundreds of thousands
-    /// of times in a single frame.
-    fn draw(&mut self, c: char, x: i32, y: i32);
-    /// Set the color to draw future characters with.
-    fn set_color(&mut self, color: ColorPair);
-    /// Clear the terminal of all characters.
-    fn clear(&mut self);
-    /// Return width and height (in character cells) of the terminal window.
-    fn get_dimensions(&self) -> (i32, i32);
-}
-
-struct CursesBackend(EasyCurses);
-
-impl Backend for CursesBackend {
-    fn new() -> Self {
-        let mut curses = EasyCurses::initialize_system().unwrap();
-
-        curses.set_input_mode(InputMode::Character);
-        curses.set_input_timeout(TimeoutMode::Immediate);
-        curses.set_cursor_visibility(CursorVisibility::Invisible);
-        curses.set_keypad_enabled(true);
-        curses.set_echo(false);
-
-        CursesBackend(curses)
-    }
-
-    fn draw(&mut self, c: char, x: i32, y: i32) {
-        self.0.move_rc(y, x);
-        self.0.print_char(c);
-    }
-    
-    fn set_color(&mut self, color: ColorPair) {
-        self.0.set_color_pair(color);
-    }
-
-    fn clear(&mut self) {
-        let (h, w) = self.0.get_row_col_count();
-        self.0.set_color_pair(ColorPair::default());
-        for x in 0..w {
-            for y in 0..h {
-                self.draw(' ', x, y);
-            }
-        }
-    }
-
-    fn get_dimensions(&self) -> (i32, i32) {
-        let (y, x) = self.0.get_row_col_count();
-        (x, y)
-    }
 }
 
 pub fn draw_cell(e: &mut EasyCurses, c: char, x: i32, y: i32) {

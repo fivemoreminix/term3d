@@ -300,3 +300,49 @@ impl Term3D {
         }
     }
 }
+
+pub trait Render {
+    /// Print a single character with the given color to the x and y position on the terminal,
+    /// in the fastest possible way. This function will be called thousands, to hundreds of thousands
+    /// of times in a single frame.
+    fn draw(&mut self, c: char, x: i32, y: i32);
+    /// Print the given text horizontally, where x and y is the first letter position.
+    fn say(&mut self, text: &str, x: i32, y: i32);
+    /// Set the color to draw future characters with.
+    fn set_color(&mut self, color: ColorPair);
+    /// Clear the terminal of all characters.
+    fn clear(&mut self);
+    /// Return width and height (in character cells) of the terminal window.
+    fn get_dimensions(&self) -> (i32, i32);
+}
+
+impl Render for Term3D {
+    fn draw(&mut self, c: char, x: i32, y: i32) {
+        self.backend.move_rc(y, x);
+        self.backend.print_char(c);
+    }
+
+    fn say(&mut self, text: &str, x: i32, y: i32) {
+        self.backend.move_rc(y, x);
+        self.backend.print(text);
+    }
+    
+    fn set_color(&mut self, color: ColorPair) {
+        self.backend.set_color_pair(color);
+    }
+
+    fn clear(&mut self) {
+        let (h, w) = self.backend.get_row_col_count();
+        self.backend.set_color_pair(ColorPair::default());
+        for x in 0..w {
+            for y in 0..h {
+                self.draw(' ', x, y);
+            }
+        }
+    }
+
+    fn get_dimensions(&self) -> (i32, i32) {
+        let (y, x) = self.backend.get_row_col_count();
+        (x, y)
+    }
+}
