@@ -142,7 +142,7 @@ pub fn draw_tri(e: &mut Crossterm, /*color: ColorPair,*/ v1: IVec2, v2: IVec2, v
     // e.set_color_pair(color);
     for x in minx..=maxx {
         for y in miny..=maxy {
-            let q = IVec2::new((x - v1.x as u16) as i32, (y - v1.y as u16) as i32);
+            let q = IVec2::new(x as i32 - v1.x, y as i32 - v1.y);
 
             let perp_dot_product_vs1_vs2 = perp_ivec2(&vs1).dot(&vs2) as f32;
             let s = perp_ivec2(&q).dot(&vs2) as f32 / perp_dot_product_vs1_vs2;

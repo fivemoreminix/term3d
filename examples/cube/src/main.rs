@@ -31,57 +31,70 @@ impl Game for App {
         term.objects.push(obj);
     }
 
-    fn update(&mut self, term: &mut Term3D, delta: f32, key: Option<Input>) {
+    fn update(&mut self, term: &mut Term3D, delta: f32, event: Option<InputEvent>) {
         // Print framerate at top-middle of screen
         // term.backend.move_rc(0, term.backend.get_row_col_count().1 / 2);
         // term.backend.set_color_pair(ColorPair::new(Color::Yellow, Color::Black));
         // term.backend.print("20");
         //term.log(&format!("{}", (1./delta) as u32), Color::Yellow);
 
-        if let Some(input) = key {
+        if let Some(event) = event {
             let s = delta * 10.;
             let cam = &mut term.cam;
 
-            match input {
-                Input::Character('q') => cam.transform.pos.1 += s, // Go down
-                Input::Character('e') => cam.transform.pos.1 -= s, // Go up
-
-                Input::Character('w')
-                | Input::Character('a')
-                | Input::Character('s')
-                | Input::Character('d') => {
-                    let (x, y) = (s * cam.transform.rot.1.sin(), s * cam.transform.rot.1.cos());
-                    match input {
-                        Input::Character('w') => { // Forward
-                            cam.transform.pos.0 += x;
-                            cam.transform.pos.2 += y;
-                        }
-                        Input::Character('s') => { // Backward 
-                            cam.transform.pos.0 -= x;
-                            cam.transform.pos.2 -= y;
-                        }
-                        Input::Character('a') => { // Left
-                            cam.transform.pos.0 -= y;
-                            cam.transform.pos.2 += x;
-                        }
-                        Input::Character('d') => { // Right
-                            cam.transform.pos.0 += y;
-                            cam.transform.pos.2 -= x;
-                        }
-                        _ => unreachable!(),
-                    }
+            match event {
+                InputEvent::Keyboard(k) => match k {
+                    KeyEvent::Esc => std::process::exit(1),
+                    _ => {}
                 }
-
-                // The following inputs are for the arrow keys,
-                // which in this example control looking around.
-                Input::KeyUp => cam.transform.rot.0 -= s,
-                Input::KeyDown => cam.transform.rot.0 += s,
-                Input::KeyLeft => cam.transform.rot.1 -= s,
-                Input::KeyRight => cam.transform.rot.1 += s,
-
                 _ => {}
             }
         }
+
+        // if let Some(input) = key {
+        //     let s = delta * 10.;
+        //     let cam = &mut term.cam;
+
+        //     match input {
+        //         Input::Character('q') => cam.transform.pos.1 += s, // Go down
+        //         Input::Character('e') => cam.transform.pos.1 -= s, // Go up
+
+        //         Input::Character('w')
+        //         | Input::Character('a')
+        //         | Input::Character('s')
+        //         | Input::Character('d') => {
+        //             let (x, y) = (s * cam.transform.rot.1.sin(), s * cam.transform.rot.1.cos());
+        //             match input {
+        //                 Input::Character('w') => { // Forward
+        //                     cam.transform.pos.0 += x;
+        //                     cam.transform.pos.2 += y;
+        //                 }
+        //                 Input::Character('s') => { // Backward 
+        //                     cam.transform.pos.0 -= x;
+        //                     cam.transform.pos.2 -= y;
+        //                 }
+        //                 Input::Character('a') => { // Left
+        //                     cam.transform.pos.0 -= y;
+        //                     cam.transform.pos.2 += x;
+        //                 }
+        //                 Input::Character('d') => { // Right
+        //                     cam.transform.pos.0 += y;
+        //                     cam.transform.pos.2 -= x;
+        //                 }
+        //                 _ => unreachable!(),
+        //             }
+        //         }
+
+        //         // The following inputs are for the arrow keys,
+        //         // which in this example control looking around.
+        //         Input::KeyUp => cam.transform.rot.0 -= s,
+        //         Input::KeyDown => cam.transform.rot.0 += s,
+        //         Input::KeyLeft => cam.transform.rot.1 -= s,
+        //         Input::KeyRight => cam.transform.rot.1 += s,
+
+        //         _ => {}
+        //     }
+        // }
     }
 }
 
