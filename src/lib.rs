@@ -1,6 +1,9 @@
 #![feature(vec_remove_item)]
 
-pub use easycurses::*;
+use crossterm::{
+    Crossterm, ClearType, Color, Colorize, InputEvent, KeyEvent, RawScreen,
+};
+
 pub use nalgebra_glm as glm;
 
 use ordered_float::NotNan;
@@ -11,7 +14,7 @@ use crate::core::*;
 
 use glm::IVec2;
 
-use std::cmp::{max, min};
+use std::cmp::max;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -88,11 +91,11 @@ impl Object {
 
 pub trait Game {
     fn start(&mut self, term: &mut Term3D);
-    fn update(&mut self, term: &mut Term3D, delta: f32, key: Option<Input>);
+    fn update(&mut self, term: &mut Term3D, delta: f32/*, key: Option<Input>*/);
 }
 
 pub struct Term3D {
-    pub backend: EasyCurses,
+    pub backend: Crossterm,
     pub cam: Camera,
     pub objects: Vec<Object>,
     pub log: Vec<(String, Color, Duration)>, // Lines of text being drawn
@@ -101,7 +104,7 @@ pub struct Term3D {
 impl Term3D {
     pub fn new() -> Self {
         Self {
-            backend: EasyCurses::initialize_system().unwrap(),
+            backend: Crossterm::new(),
             cam: Camera::new((0., 0., 0.), (0., 0.)),
             objects: Vec::new(),
             log: Vec::new(),
@@ -109,17 +112,18 @@ impl Term3D {
     }
 
     pub fn run<T: Game>(&mut self, game: &mut T) {
-        self.backend.set_input_mode(InputMode::Character);
-        self.backend.set_input_timeout(TimeoutMode::Immediate);
-        self.backend
-            .set_cursor_visibility(CursorVisibility::Invisible);
-        self.backend.set_keypad_enabled(true);
-        self.backend.set_echo(false);
+        // self.backend.set_input_mode(InputMode::Character);
+        // self.backend.set_input_timeout(TimeoutMode::Immediate);
+        // self.backend
+        //     .set_cursor_visibility(CursorVisibility::Invisible);
+        // self.backend.set_keypad_enabled(true);
+        // self.backend.set_echo(false);
+        self.backend.cursor().hide().unwrap();
 
         let frame_target_duration = Duration::new(1, 0).checked_div(60).unwrap();
 
-        let (mut h, mut w) = self.backend.get_row_col_count();
-        let (mut cx, mut cy) = (w as f32 / 2., h as f32 / 2.);
+        let (w, h) = self.backend.terminal().terminal_size();
+        let (cx, cy) = (w as f32 / 2., h as f32 / 2.);
 
         let mut delta_time: f32 = 0.;
 
@@ -132,27 +136,28 @@ impl Term3D {
         loop {
             let top_of_loop = Instant::now();
 
-            let key = self.backend.get_input();
-            if key == Some(Input::Character('\u{1b}')) {
-                break;
-            } else if key == Some(Input::KeyResize) {
-                self.backend.resize(0, 0);
-                let (height, width) = self.backend.get_row_col_count();
-                w = width;
-                h = height;
-                cx = w as f32 / 2.;
-                cy = h as f32 / 2.;
-            }
+            // let key = self.backend.get_input();
+            // if key == Some(Input::Character('\u{1b}')) {
+            //     break;
+            // } else if key == Some(Input::KeyResize) {
+            //     self.backend.resize(0, 0);
+            //     let (height, width) = self.backend.get_row_col_count();
+            //     w = width;
+            //     h = height;
+            //     cx = w as f32 / 2.;
+            //     cy = h as f32 / 2.;
+            // }
 
             // clear screen
-            self.backend.set_color_pair(ColorPair::default());
-            for x in 0..w {
-                for y in 0..h {
-                    draw_cell(&mut self.backend, ' ', x, y);
-                }
-            }
+            // self.backend.set_color_pair(ColorPair::default()); RESET COLORS
+            // for x in 0..w {
+            //     for y in 0..h {
+            //         draw_cell(&mut self.backend, ' ', x, y);
+            //     }
+            // }
+            self.backend.terminal().clear(ClearType::All).unwrap();
 
-            game.update(self, delta_time, key);
+            game.update(self, delta_time/*, key*/);
 
             // if self.log.len() >= 2 {
             //     self.log[0].0 = format!("{}", self.log[1].2.as_secs());
@@ -195,7 +200,7 @@ impl Term3D {
                     for &i in &face.0 {
                         let p = screen_coords[i as usize];
                         // If any of the face's corners are within view
-                        if vert_list[i as usize][2] > 0. && (p.x >= 0 && p.x <= w) || (p.y >= 0 && p.y <= h)
+                        if vert_list[i as usize][2] > 0. && (p.x >= 0 && p.x <= w as i32) || (p.y >= 0 && p.y <= h as i32)
                         {
                             on_screen = true;
                             break; // Break from the iteration
@@ -238,13 +243,13 @@ impl Term3D {
             for i in order {
                 draw_quad(
                     &mut self.backend,
-                    ColorPair::new(
+                    /*ColorPair::new(
                         match face_list[i].1 {
                             Some(c) => c,
                             None => Color::White,
                         },
                         Color::Black,
-                    ),
+                    ),*/
                     face_list[i].0[0],
                     face_list[i].0[1],
                     face_list[i].0[2],
@@ -257,9 +262,11 @@ impl Term3D {
 
                 for i in 0..self.log.len() {
                     // Draw log text
-                    self.backend.move_rc(i as i32, 0);
-                    self.backend.set_color_pair(ColorPair::new(self.log[i].1, Color::Black));
-                    self.backend.print(&self.log[i].0);
+                    // self.backend.move_rc(i as i32, 0);
+                    self.backend.cursor().goto(0, i as u16).unwrap();
+                    // self.backend.set_color_pair(ColorPair::new(self.log[i].1, Color::Black)); text color ON black
+                    // self.backend.print(&self.log[i].0);
+                    self.backend.terminal().write(&self.log[i].0).unwrap();
 
                     match self.log[i].2.checked_sub(Duration::from_millis((delta_time * 1000.) as u64)) {
                         None => to_be_removed.push(i),
@@ -268,12 +275,10 @@ impl Term3D {
                 }
 
                 if !to_be_removed.is_empty() { // TODO: Bug exists somewhere in this block of code
-                    let mut offset = 0;
-                    for index in to_be_removed {
+                    for (offset, index) in to_be_removed.iter().enumerate() {
                         // This only works because the items in to_be_removed are added
                         // in the same order as 0..self.log.len() (they are sorted)
                         self.log.remove(max(0, index - offset));
-                        offset += 1;
                     }
                 }
             }
@@ -284,7 +289,7 @@ impl Term3D {
                 sleep(frame_remaining);
             }
 
-            self.backend.refresh();
+            //self.backend.refresh();
 
             //let elapsed_after_updates = after_updates.elapsed();
             //delta_time = (elapsed_after_updates.as_secs() as f32)
@@ -295,7 +300,7 @@ impl Term3D {
 
     pub fn log(&mut self, text: &str, color: Color) {
         self.log.insert(0, (text.to_owned(), color, Duration::from_secs(10)));
-        if self.log.len() > self.backend.get_row_col_count().0 as usize {
+        if self.log.len() > self.backend.terminal().terminal_size().1 as usize {
             self.log.pop();
         }
     }
@@ -309,40 +314,40 @@ pub trait Render {
     /// Print the given text horizontally, where x and y is the first letter position.
     fn say(&mut self, text: &str, x: i32, y: i32);
     /// Set the color to draw future characters with.
-    fn set_color(&mut self, color: ColorPair);
+    fn set_color(&mut self, color: Color);
     /// Clear the terminal of all characters.
     fn clear(&mut self);
     /// Return width and height (in character cells) of the terminal window.
     fn get_dimensions(&self) -> (i32, i32);
 }
 
-impl Render for Term3D {
-    fn draw(&mut self, c: char, x: i32, y: i32) {
-        self.backend.move_rc(y, x);
-        self.backend.print_char(c);
-    }
+// impl Render for Term3D {
+//     fn draw(&mut self, c: char, x: i32, y: i32) {
+//         self.backend.move_rc(y, x);
+//         self.backend.print_char(c);
+//     }
 
-    fn say(&mut self, text: &str, x: i32, y: i32) {
-        self.backend.move_rc(y, x);
-        self.backend.print(text);
-    }
+//     fn say(&mut self, text: &str, x: i32, y: i32) {
+//         self.backend.move_rc(y, x);
+//         self.backend.print(text);
+//     }
     
-    fn set_color(&mut self, color: ColorPair) {
-        self.backend.set_color_pair(color);
-    }
+//     fn set_color(&mut self, color: ColorPair) {
+//         self.backend.set_color_pair(color);
+//     }
 
-    fn clear(&mut self) {
-        let (h, w) = self.backend.get_row_col_count();
-        self.backend.set_color_pair(ColorPair::default());
-        for x in 0..w {
-            for y in 0..h {
-                self.draw(' ', x, y);
-            }
-        }
-    }
+//     fn clear(&mut self) {
+//         let (h, w) = self.backend.get_row_col_count();
+//         self.backend.set_color_pair(ColorPair::default());
+//         for x in 0..w {
+//             for y in 0..h {
+//                 self.draw(' ', x, y);
+//             }
+//         }
+//     }
 
-    fn get_dimensions(&self) -> (i32, i32) {
-        let (y, x) = self.backend.get_row_col_count();
-        (x, y)
-    }
-}
+//     fn get_dimensions(&self) -> (i32, i32) {
+//         let (y, x) = self.backend.get_row_col_count();
+//         (x, y)
+//     }
+// }

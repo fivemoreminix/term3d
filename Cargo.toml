@@ -8,6 +8,6 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-easycurses = "0.12"
+crossterm = "0.9.3"
 ordered-float = "1.0.1"
 nalgebra-glm = "0.3.0"
