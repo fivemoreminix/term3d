@@ -45,6 +45,43 @@ impl Game for App {
             match event {
                 InputEvent::Keyboard(k) => match k {
                     KeyEvent::Esc => std::process::exit(1),
+
+                    KeyEvent::Char('q') => cam.transform.pos.1 += s, // Go down
+                    KeyEvent::Char('e') => cam.transform.pos.1 -= s, // Go up
+
+                    KeyEvent::Char('w') |
+                    KeyEvent::Char('a') |
+                    KeyEvent::Char('s') |
+                    KeyEvent::Char('d') => {
+                        let (x, y) = (s * cam.transform.rot.1.sin(), s * cam.transform.rot.1.cos());
+                        match k {
+                            KeyEvent::Char('w') => { // Forward
+                                cam.transform.pos.0 += x;
+                                cam.transform.pos.2 += y;
+                            }
+                            KeyEvent::Char('s') => { // Backward 
+                                cam.transform.pos.0 -= x;
+                                cam.transform.pos.2 -= y;
+                            }
+                            KeyEvent::Char('a') => { // Left
+                                cam.transform.pos.0 -= y;
+                                cam.transform.pos.2 += x;
+                            }
+                            KeyEvent::Char('d') => { // Right
+                                cam.transform.pos.0 += y;
+                                cam.transform.pos.2 -= x;
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    // The following inputs are for the arrow keys,
+                    // which in this example control looking around.
+                    KeyEvent::Up => cam.transform.rot.0 -= s,
+                    KeyEvent::Down => cam.transform.rot.0 += s,
+                    KeyEvent::Left => cam.transform.rot.1 -= s,
+                    KeyEvent::Right => cam.transform.rot.1 += s,
+
                     _ => {}
                 }
                 _ => {}
