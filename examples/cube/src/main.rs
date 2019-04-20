@@ -136,6 +136,7 @@ impl Game for App {
 }
 
 fn main() {
-    let mut term3d = Term3D::new();
+    let mut stdout = std::io::stdout();
+    let mut term3d = Term3D::new(&mut stdout);
     term3d.run(&mut App);
 }

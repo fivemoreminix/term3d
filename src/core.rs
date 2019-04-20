@@ -1,6 +1,9 @@
+#![allow(dead_code)]
+
 use crossterm::{
     Crossterm, ClearType, Color, Colorize, InputEvent, KeyEvent, RawScreen,
 };
+use std::io::prelude::*;
 
 use crate::glm::IVec2;
 
@@ -14,85 +17,6 @@ pub fn rotate_2d(pos: (f32, f32), rad: f32) -> (f32, f32) {
     let (x, y) = pos;
     let (s, c) = (rad.sin(), rad.cos());
     (x * c - y * s, y * c + x * s)
-}
-
-pub fn draw_cell(e: &mut Crossterm, c: char, x: u16, y: u16) {
-    // Top left is origin
-    // e.move_rc(y, x);
-    // e.print_char(c);
-    e.cursor().goto(x, y).unwrap();
-    e.terminal().write(c).unwrap();
-}
-
-fn draw_line_low(e: &mut Crossterm, x0: i32, y0: i32, x1: i32, y1: i32) {
-    let dx = x1 - x0;
-    let mut dy = y1 - y0;
-    let mut yi = 1;
-    if dy < 0 {
-        yi = -1;
-        dy = -dy;
-    }
-    let mut d = 2 * dy - dx;
-    let mut y = y0;
-
-    // e.set_color_pair(ColorPair::default());
-    // Reset color function?
-    for x in x0..x1 {
-        draw_cell(e, '#', x as u16, y as u16);
-        if d > 0 {
-            y += yi;
-            d -= 2 * dx;
-        }
-        d += 2 * dy;
-    }
-}
-
-fn draw_line_high(e: &mut Crossterm, x0: i32, y0: i32, x1: i32, y1: i32) {
-    let mut dx = x1 - x0;
-    let dy = y1 - y0;
-    let mut xi = 1;
-    if dx < 0 {
-        xi = -1;
-        dx = -dx;
-    }
-    let mut d = 2 * dx - dy;
-    let mut x = x0;
-
-    //e.set_color_pair(ColorPair::default()); RESET COLORS
-    for y in y0..y1 {
-        draw_cell(e, '#', x as u16, y as u16);
-        if d > 0 {
-            x += xi;
-            d -= 2 * dy;
-        }
-        d += 2 * dx;
-    }
-}
-
-pub fn draw_line(e: &mut Crossterm, x0: i32, y0: i32, x1: i32, y1: i32) {
-    if x0 == x1 {
-        for y in y0..=y1 {
-            draw_cell(e, '|', x0 as u16, y as u16);
-        }
-    } else if y0 == y1 {
-        for x in x0..=x1 {
-            draw_cell(e, '-', x as u16, y0 as u16);
-        }
-    } else {
-        if (y1 - y0).abs() < (x1 - x0).abs() {
-            if x0 > x1 {
-                draw_line_low(e, x1, y1, x0, y0);
-            } else {
-                draw_line_low(e, x0, y0, x1, y1);
-            }
-        } else {
-            if y0 > y1 {
-                draw_line_high(e, x1, y1, x0, y0);
-            } else {
-                draw_line_high(e, x0, y0, x1, y1);
-            }
-        }
-    }
 }
 
 /// # Returns
@@ -120,44 +44,147 @@ pub fn tri_bounding_box(v1: IVec2, v2: IVec2, v3: IVec2) -> (i32, i32, i32, i32)
     (min_x, max_x, min_y, max_y)
 }
 
-pub fn draw_tri(e: &mut Crossterm, /*color: ColorPair,*/ v1: IVec2, v2: IVec2, v3: IVec2) {
-    // calculate triangle bounding box
-    let (minx, maxx, miny, maxy) = {
-        let (minx, maxx, miny, maxy) = tri_bounding_box(v1, v2, v3);
-        // Clip box against render target bounds
-        let (mut emax_x, mut emax_y) = e.terminal().terminal_size();
-        emax_y -= 1;
-        emax_x -= 1;
-        (
-            min(emax_x, max(0, minx as u16)),
-            min(emax_x, max(0, maxx as u16)),
-            min(emax_y, max(0, miny as u16)),
-            min(emax_y, max(0, maxy as u16)),
-        )
-    };
+impl<'a> crate::Term3D<'a> {
+    /// Print a single character with the given color to the x and y position on the terminal,
+    /// in the fastest possible way. This function will be called thousands, to hundreds of thousands
+    /// of times in a single frame.
+    pub fn draw(&mut self, c: char, x: u16, y: u16) {
+        self.backend.cursor().goto(x, y).unwrap();
+        //self.backend.terminal().write(c).unwrap();
+        write!(self.stdout_lock, "{}", c).unwrap();
+    }
 
-    let vs1 = IVec2::new(v2.x - v1.x, v2.y - v1.y);
-    let vs2 = IVec2::new(v3.x - v1.x, v3.y - v1.y);
+    /// Print the given text horizontally, where x and y is the first letter position.
+    pub fn say(&mut self, text: &str, x: u16, y: u16) {
+        self.backend.cursor().goto(x, y).unwrap();
+        self.backend.terminal().write(text).unwrap();
+    }
 
-    // e.set_color_pair(color);
-    for x in minx..=maxx {
-        for y in miny..=maxy {
-            let q = IVec2::new(x as i32 - v1.x, y as i32 - v1.y);
+    pub fn draw_line_low(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
+        let dx = x1 - x0;
+        let mut dy = y1 - y0;
+        let mut yi = 1;
+        if dy < 0 {
+            yi = -1;
+            dy = -dy;
+        }
+        let mut d = 2 * dy - dx;
+        let mut y = y0;
 
-            let perp_dot_product_vs1_vs2 = perp_ivec2(&vs1).dot(&vs2) as f32;
-            let s = perp_ivec2(&q).dot(&vs2) as f32 / perp_dot_product_vs1_vs2;
-            let t = perp_ivec2(&vs1).dot(&q) as f32 / perp_dot_product_vs1_vs2;
-            //let s = q.perp_dot_product(&vs2) / vs1.perp_dot_product(&vs2);
-            //let t = vs1.perp_dot_product(&q) / vs1.perp_dot_product(&vs2);
+        // e.set_color_pair(ColorPair::default());
+        // Reset color function?
+        for x in x0..x1 {
+            self.draw('#', x as u16, y as u16);
+            if d > 0 {
+                y += yi;
+                d -= 2 * dx;
+            }
+            d += 2 * dy;
+        }
+    }
 
-            if (s >= 0.) && (t >= 0.) && (s + t <= 1.) {
-                draw_cell(e, '#', x, y);
+    pub fn draw_line_high(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
+        let mut dx = x1 - x0;
+        let dy = y1 - y0;
+        let mut xi = 1;
+        if dx < 0 {
+            xi = -1;
+            dx = -dx;
+        }
+        let mut d = 2 * dx - dy;
+        let mut x = x0;
+
+        //e.set_color_pair(ColorPair::default()); RESET COLORS
+        for y in y0..y1 {
+            self.draw('#', x as u16, y as u16);
+            if d > 0 {
+                x += xi;
+                d -= 2 * dy;
+            }
+            d += 2 * dx;
+        }
+    }
+
+    pub fn draw_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
+        if x0 == x1 {
+            for y in y0..=y1 {
+                self.draw('|', x0 as u16, y as u16);
+            }
+        } else if y0 == y1 {
+            for x in x0..=x1 {
+                self.draw('-', x as u16, y0 as u16);
+            }
+        } else {
+            if (y1 - y0).abs() < (x1 - x0).abs() {
+                if x0 > x1 {
+                    self.draw_line_low(x1, y1, x0, y0);
+                } else {
+                    self.draw_line_low(x0, y0, x1, y1);
+                }
+            } else {
+                if y0 > y1 {
+                    self.draw_line_high(x1, y1, x0, y0);
+                } else {
+                    self.draw_line_high(x0, y0, x1, y1);
+                }
             }
         }
     }
-}
 
-pub fn draw_quad(e: &mut Crossterm, /*color: ColorPair,*/ a: IVec2, b: IVec2, c: IVec2, d: IVec2) {
-    draw_tri(e, /*color,*/ a, b, c);
-    draw_tri(e, /*color,*/ a, d, c);
+    pub fn draw_tri(&mut self, /*color: ColorPair,*/ v1: IVec2, v2: IVec2, v3: IVec2) {
+        // calculate triangle bounding box
+        let (minx, maxx, miny, maxy) = {
+            let (minx, maxx, miny, maxy) = tri_bounding_box(v1, v2, v3);
+            // Clip box against render target bounds
+            let (mut emax_x, mut emax_y) = self.backend.terminal().terminal_size();
+            emax_y -= 1;
+            emax_x -= 1;
+            (
+                min(emax_x, max(0, minx as u16)),
+                min(emax_x, max(0, maxx as u16)),
+                min(emax_y, max(0, miny as u16)),
+                min(emax_y, max(0, maxy as u16)),
+            )
+        };
+
+        let vs1 = IVec2::new(v2.x - v1.x, v2.y - v1.y);
+        let vs2 = IVec2::new(v3.x - v1.x, v3.y - v1.y);
+
+        // e.set_color_pair(color);
+        for x in minx..=maxx {
+            for y in miny..=maxy {
+                let q = IVec2::new(x as i32 - v1.x, y as i32 - v1.y);
+
+                let perp_dot_product_vs1_vs2 = perp_ivec2(&vs1).dot(&vs2) as f32;
+                let s = perp_ivec2(&q).dot(&vs2) as f32 / perp_dot_product_vs1_vs2;
+                let t = perp_ivec2(&vs1).dot(&q) as f32 / perp_dot_product_vs1_vs2;
+                //let s = q.perp_dot_product(&vs2) / vs1.perp_dot_product(&vs2);
+                //let t = vs1.perp_dot_product(&q) / vs1.perp_dot_product(&vs2);
+
+                if (s >= 0.) && (t >= 0.) && (s + t <= 1.) {
+                    self.draw('#', x, y);
+                }
+            }
+        }
+    }
+
+    pub fn draw_quad(&mut self, /*color: ColorPair,*/ a: IVec2, b: IVec2, c: IVec2, d: IVec2) {
+        self.draw_tri(/*color,*/ a, b, c);
+        self.draw_tri(/*color,*/ a, d, c);
+    }
+
+    /// Set the color to draw future characters with.
+    pub fn set_color(&mut self, color: Color) {
+
+    }
+
+    /// Clear the terminal of all characters.
+    pub fn clear(&mut self) {
+        self.backend.terminal().clear(ClearType::All).unwrap();
+    }
+
+    /// Return width and height (in character cells) of the terminal window.
+    pub fn get_size(&self) -> (u16, u16) {
+        self.backend.terminal().terminal_size()
+    }
 }

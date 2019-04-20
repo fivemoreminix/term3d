@@ -3,6 +3,7 @@
 pub use crossterm::{
     Crossterm, ClearType, Color, Colorize, InputEvent, KeyEvent, RawScreen,
 };
+use std::io::prelude::*;
 
 pub use nalgebra_glm as glm;
 
@@ -14,7 +15,7 @@ use crate::core::*;
 
 use glm::IVec2;
 
-use std::cmp::max;
+use std::cmp::{min, max};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -94,17 +95,20 @@ pub trait Game {
     fn update(&mut self, term: &mut Term3D, delta: f32, input: Option<InputEvent>);
 }
 
-pub struct Term3D {
+pub struct Term3D<'a> {
     pub backend: Crossterm,
+    //pub stdout: std::io::Stdout,
+    pub stdout_lock: std::io::StdoutLock<'a>,
     pub cam: Camera,
     pub objects: Vec<Object>,
     pub log: Vec<(String, Color, Duration)>, // Lines of text being drawn
 }
 
-impl Term3D {
-    pub fn new() -> Self {
+impl<'a> Term3D<'a> {
+    pub fn new(stdout_handle: &'a mut std::io::Stdout) -> Self {
         Self {
             backend: Crossterm::new(),
+            stdout_lock: stdout_handle.lock(),
             cam: Camera::new((0., 0., 0.), (0., 0.)),
             objects: Vec::new(),
             log: Vec::new(),
@@ -132,6 +136,10 @@ impl Term3D {
             let input = self.backend.input();
             input.enable_mouse_mode().unwrap(); // Allow mouse events to be captured (CURRENTLY UNUSED)
             let mut stdin = input.read_async();
+
+            // Output
+            let stdout = std::io::stdout();
+            let stdoutl = stdout.lock();
 
             loop {
                 let top_of_loop = Instant::now();
@@ -243,8 +251,7 @@ impl Term3D {
                 order.reverse();
 
                 for i in order {
-                    draw_quad(
-                        &mut self.backend,
+                    self.draw_quad(
                         /*ColorPair::new(
                             match face_list[i].1 {
                                 Some(c) => c,
@@ -292,6 +299,7 @@ impl Term3D {
                 }
 
                 //self.backend.refresh();
+                std::io::stdout().flush().unwrap();
 
                 //let elapsed_after_updates = after_updates.elapsed();
                 //delta_time = (elapsed_after_updates.as_secs() as f32)
@@ -308,49 +316,3 @@ impl Term3D {
         }
     }
 }
-
-pub trait Render {
-    /// Print a single character with the given color to the x and y position on the terminal,
-    /// in the fastest possible way. This function will be called thousands, to hundreds of thousands
-    /// of times in a single frame.
-    fn draw(&mut self, c: char, x: i32, y: i32);
-    /// Print the given text horizontally, where x and y is the first letter position.
-    fn say(&mut self, text: &str, x: i32, y: i32);
-    /// Set the color to draw future characters with.
-    fn set_color(&mut self, color: Color);
-    /// Clear the terminal of all characters.
-    fn clear(&mut self);
-    /// Return width and height (in character cells) of the terminal window.
-    fn get_dimensions(&self) -> (i32, i32);
-}
-
-// impl Render for Term3D {
-//     fn draw(&mut self, c: char, x: i32, y: i32) {
-//         self.backend.move_rc(y, x);
-//         self.backend.print_char(c);
-//     }
-
-//     fn say(&mut self, text: &str, x: i32, y: i32) {
-//         self.backend.move_rc(y, x);
-//         self.backend.print(text);
-//     }
-    
-//     fn set_color(&mut self, color: ColorPair) {
-//         self.backend.set_color_pair(color);
-//     }
-
-//     fn clear(&mut self) {
-//         let (h, w) = self.backend.get_row_col_count();
-//         self.backend.set_color_pair(ColorPair::default());
-//         for x in 0..w {
-//             for y in 0..h {
-//                 self.draw(' ', x, y);
-//             }
-//         }
-//     }
-
-//     fn get_dimensions(&self) -> (i32, i32) {
-//         let (y, x) = self.backend.get_row_col_count();
-//         (x, y)
-//     }
-// }
